@@ -110,7 +110,7 @@ EXEC_TARGET fptype device_Tddp (fptype* evt, fptype* p, unsigned int* indices) {
     fptype amp_imag = p[indices[paramIndex+1]];
 
     devcomplex<fptype> matrixelement(thrust::get<0>(cWaves[cacheToUse][evtNum*numResonances + i]),
-				     thrust::get<1>(cWaves[cacheToUse][evtNum*numResonances + i])); 
+                                    thrust::get<1>(cWaves[cacheToUse][evtNum*numResonances + i]));
     matrixelement.multiply(amp_real, amp_imag); 
     sumWavesA += matrixelement; 
 
@@ -471,10 +471,44 @@ __host__ void TddpPdf::setDataSize (unsigned int dataSize, unsigned int evtSize)
   }
 
   numEntries = dataSize; 
+
+#ifdef TARGET_MPI
+  //This function can't rely on m_iEventsPerTask being set properly, we need to determine it right now...
+  int myId, numProcs;
+  MPI_Comm_size (MPI_COMM_WORLD, &numProcs);
+  MPI_Comm_rank (MPI_COMM_WORLD, &myId);
+
+  int perTask = (numEntries)/numProcs;
+  //printf ("numEntires:%i evtSize:%i numProcs:%i perTask:%i\n", numEntries, evtSize, numProcs, perTask);
+
+  int *counts = new int[numProcs];
+  int *displacements = new int[numProcs];
+
+  //indexing for copying events over!
+  for (int i = 0; i < numProcs - 1; i++)
+    counts[i] = perTask;
+  counts[numProcs - 1] = numEntries - perTask*(numProcs - 1);
+
+  //displacements into the array for indexing!
+  displacements[0] = 0;
+  for (int i = 1; i < numProcs; i++)
+    displacements[i] = displacements[i - 1] + counts[i - 1];
+
+  setNumPerTask (this, counts[myId]);
+
+  delete [] counts;
+  delete [] displacements;
+
+  cachedWaves = new thrust::device_vector<WaveHolder>(m_iEventsPerTask*decayInfo->resonances.size());
+  void* dummy = thrust::raw_pointer_cast(cachedWaves->data()); 
+  MEMCPY_TO_SYMBOL(cWaves, &dummy, sizeof(WaveHolder*), cacheToUse*sizeof(WaveHolder*), cudaMemcpyHostToDevice); 
+  setForceIntegrals(); 
+#else
   cachedWaves = new thrust::device_vector<WaveHolder>(dataSize*decayInfo->resonances.size());
   void* dummy = thrust::raw_pointer_cast(cachedWaves->data()); 
   MEMCPY_TO_SYMBOL(cWaves, &dummy, sizeof(WaveHolder*), cacheToUse*sizeof(WaveHolder*), cudaMemcpyHostToDevice); 
   setForceIntegrals(); 
+#endif
 }
 
 __host__ fptype TddpPdf::normalise () const {
@@ -524,11 +558,21 @@ __host__ fptype TddpPdf::normalise () const {
 
   for (int i = 0; i < decayInfo->resonances.size(); ++i) {
     if (redoIntegral[i]) {
+#ifdef TARGET_MPI
+      thrust::transform (thrust::make_zip_iterator(thrust::make_tuple(eventIndex, dataArray, eventSize)),
+		thrust::make_zip_iterator(thrust::make_tuple(eventIndex + m_iEventsPerTask, arrayAddress, eventSize)),
+		strided_range<thrust::device_vector<WaveHolder>::iterator>(
+			cachedWaves->begin() + i, 
+			cachedWaves->end(), 
+			decayInfo->resonances.size()).begin(), 
+		*(calculators[i]));
       
+#else
       thrust::transform(thrust::make_zip_iterator(thrust::make_tuple(eventIndex, dataArray, eventSize)),
 			thrust::make_zip_iterator(thrust::make_tuple(eventIndex + numEntries, arrayAddress, eventSize)),
 			strided_range<thrust::device_vector<WaveHolder>::iterator>(cachedWaves->begin() + i, cachedWaves->end(), decayInfo->resonances.size()).begin(), 
 			*(calculators[i]));
+#endif
       //std::cout << "Integral for resonance " << i << " " << numEntries << " " << totalEventSize << std::endl; 
     }
     
@@ -541,18 +585,18 @@ __host__ fptype TddpPdf::normalise () const {
 						      thrust::make_zip_iterator(thrust::make_tuple(binIndex + totalBins, arrayAddress)),
 						      *(integrators[i][j]), 
 						      dummy, 
-						      complexSum); 
+						      complexSum);
       /*
       std::cout << "With resonance " << j << ": " 
-		<< thrust::get<0>(*(integrals[i][j])) << " " 
-		<< thrust::get<1>(*(integrals[i][j])) << " " 
-		<< thrust::get<2>(*(integrals[i][j])) << " " 
-		<< thrust::get<3>(*(integrals[i][j])) << " " 
-		<< thrust::get<4>(*(integrals[i][j])) << " " 
-		<< thrust::get<5>(*(integrals[i][j])) << std::endl; 
+               << thrust::get<0>(*(integrals[i][j])) << " " 
+               << thrust::get<1>(*(integrals[i][j])) << " " 
+               << thrust::get<2>(*(integrals[i][j])) << " " 
+               << thrust::get<3>(*(integrals[i][j])) << " " 
+               << thrust::get<4>(*(integrals[i][j])) << " "
+               << thrust::get<5>(*(integrals[i][j])) << std::endl; 
       */
-    }
-  }      
+   }
+  }
 
   // End of time-consuming integrals. 
 
