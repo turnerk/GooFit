@@ -107,6 +107,19 @@ void fitAndPlot (GooPdf* total, UnbinnedDataSet* data, TH1F& dataHist, Variable*
 }
 
 int main (int argc, char** argv) {
+  //MPI setup
+  MPI_Status stat;
+
+  int numProcs;
+  int myId;
+
+  MPI_Init (&argc, &argv);
+  MPI_Comm_size (MPI_COMM_WORLD, &numProcs);
+  MPI_Comm_rank (MPI_COMM_WORLD, &myId);
+
+  //setting the device based on the thread
+  //cudaSetDevice(myId);
+
 #if HAVE_ROOT
   gStyle->SetCanvasBorderMode(0);
   gStyle->SetCanvasColor(10);
@@ -208,6 +221,9 @@ int main (int argc, char** argv) {
   Variable* rsigm = new Variable("rsigm", 20, 1, 10, 40); 
   GooPdf* bifur = new BifurGaussPdf("bifur", xvar, gmean, lsigm, rsigm); 
   fitAndPlot(bifur, &bifgdata, bifgHist, xvar, "bifur.png"); 
+
+  //MPI finalize
+  MPI_Finalize ();
    
   return 0;
 }

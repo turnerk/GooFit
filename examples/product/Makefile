@@ -1,3 +1,5 @@
+include ../../Makefile.config
+
 #------------------------------------------------------------------------------
 CXX=nvcc
 LD=g++  
@@ -24,7 +26,12 @@ CUDAHEADERS = $(CUDALOCATION)/include/
 GOOFITDIR = $(PWD)/../../
 
 INCLUDES += -I$(CUDAHEADERS) -I$(GOOFITDIR) -I$(GOOFITDIR)/rootstuff -I$(GOOFITDIR)/PDFs/ 
-LIBS += -L$(CUDALOCATION)/$(CUDALIBDIR) -lcudart -L$(GOOFITDIR)/rootstuff -lRootUtils 
+LIBS += -L$(CUDALOCATION)/$(CUDALIBDIR) -lcudart -L$(GOOFITDIR)/rootstuff -lRootUtils  
+
+ifeq ($(TARGET_MPI), 1)
+INCLUDES += -DTARGET_MPI $(MPI_CXXFLAGS)
+LIBS += $(MPI_LIBS)
+endif
 
 # These are for user-level programs that want access to the ROOT plotting stuff, 
 # not just the fitting stuff included in the GooFit-local ripped library. 

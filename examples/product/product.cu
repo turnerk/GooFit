@@ -8,6 +8,10 @@
 using namespace std; 
 
 int main (int argc, char** argv) {
+#ifdef TARGET_MPI
+  MPI_Init(&argc, &argv);
+#endif
+
   Variable* xvar = new Variable("xvar", 0, log(1+RAND_MAX/2)); 
   Variable* yvar = new Variable("yvar", 0, log(1+RAND_MAX/2)); 
   
@@ -33,5 +37,8 @@ int main (int argc, char** argv) {
   FitManager fitter(product);
   fitter.fit();
 
+#ifdef TARGET_MPI
+  MPI_Finalize();
+#endif
   return 0;
 }

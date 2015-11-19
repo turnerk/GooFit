@@ -1,36 +1,11 @@
-#------------------------------------------------------------------------------
-CXX=nvcc
-LD=g++  
-OutPutOpt = -o
+include ../../Makefile.config
 
-CXXFLAGS     = -O3 -arch=sm_20 -g 
-CUDALIBDIR=lib64
-
-UNAME=$(shell uname)
-ifeq ($(UNAME), Darwin)
-CUDALIBDIR=lib
-CXXFLAGS+=-m64
-else
-# Adds library symbols to debug info 
-# - not strictly required, nice to have.
-# Turn it off if it gives you trouble. 
-LDFLAGS += -rdynamic 
-endif
-
-ifneq ($(TARGET_OMP),)
-CXXFLAGS    += -Xcompiler -fopenmp -DTHRUST_DEVICE_BACKEND=THRUST_DEVICE_BACKEND_OMP -lgomp
-LDFLAGS     += -fopenmp -DTHRUST_DEVICE_BACKEND=THRUST_DEVICE_BACKEND_OMP -lgomp
-endif 
-
-ifeq ($(CUDALOCATION), )
-CUDALOCATION = /usr/local/cuda/
-endif
-CUDAHEADERS = $(CUDALOCATION)/include/
 GOOFITDIR = $(PWD)/../../
 
-INCLUDES += -I$(CUDAHEADERS) -I$(GOOFITDIR) -I$(GOOFITDIR)/rootstuff -I$(GOOFITDIR)/PDFs/ 
-LIBS += -L$(CUDALOCATION)/$(CUDALIBDIR) -lcudart -L$(GOOFITDIR)/rootstuff -lRootUtils 
+INCLUDES += -I$(GOOFITDIR) -I$(GOOFITDIR)/rootstuff -I$(GOOFITDIR)/PDFs/ 
+LIBS += -L$(GOOFITDIR)/rootstuff -lRootUtils 
 
+#------------------------------------------------------------------------------
 # These are for user-level programs that want access to the ROOT plotting stuff, 
 # not just the fitting stuff included in the GooFit-local ripped library. 
 ROOT_INCLUDES = -I$(ROOTSYS)/include/

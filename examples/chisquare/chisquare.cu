@@ -221,6 +221,10 @@ void fitRatioCPU (vector<int>& rsEvts, vector<int>& wsEvts) {
 
 
 int main (int argc, char** argv) {
+#ifdef TARGET_MPI
+  MPI_Init(&argc, &argv);
+#endif
+
   // Time is in units of lifetime
   decayTime = new Variable("decayTime", 100, 0, 10); 
   decayTime->numbins = atoi(argv[1]); 
@@ -271,5 +275,8 @@ int main (int argc, char** argv) {
 	    << "\nCPU time [seconds] : " << cpuTime 
 	    << std::endl;
 
+#ifdef TARGET_MPI
+  MPI_Finalize();
+#endif
   return 0;
 }

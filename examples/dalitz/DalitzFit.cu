@@ -356,7 +356,7 @@ void runToyFit (std::string toyFileName) {
   m13 = new Variable("m13", 0, 3); 
   m12->numbins = 240;
   m13->numbins = 240;
-  eventNumber = new Variable("eventNumber", 0, INT_MAX);
+  eventNumber = new CountVariable("eventNumber", 0, INT_MAX);
   getToyData(toyFileName);
 
   // EXERCISE 1 (real part): Create a PolynomialPdf which models
@@ -381,6 +381,52 @@ void runToyFit (std::string toyFileName) {
 }
 
 int main (int argc, char** argv) {
+#ifdef TARGET_MPI
+  MPI_Init(&argc, &argv);
+
+  //we have MPI, so lets do something slightly different here:
+  int myId, numProcs;
+  MPI_Comm_size(MPI_COMM_WORLD, &numProcs);
+  MPI_Comm_rank(MPI_COMM_WORLD, &myId);
+
+#ifndef TARGET_OMP
+  //set the processes to gpus here
+  int deviceCount;
+  cudaGetDeviceCount(&deviceCount);
+  
+  //No way to figure out how many processes per node, so we read the environment variable
+  int nodes = atoi (getenv ("PBS_NUM_NODES"));
+  if (nodes == 0)
+    nodes = 1;
+  int procsPerNode = numProcs/nodes;
+  int localRank = myId % procsPerNode;
+
+  if (deviceCount == 1 && localRank > 1)
+  {
+    printf ("Multi-process to one GPU!\n");
+    cudaSetDevice (0);
+  }
+  else if (procsPerNode > 1 && deviceCount > 1)
+  {
+     if (localRank <= deviceCount)
+     {
+       printf ("setting multiple processes to multiple GPU's\n");
+       cudaSetDevice (localRank);
+     }
+     else
+     {
+       printf ("More multi-processes than multi-gpu's!\n");
+       cudaSetDevice (localRank % deviceCount);
+     }
+  }
+  else
+  {
+    printf ("Multi-GPU's, using one process! %i, [%i,%i]\n", deviceCount, localRank, procsPerNode);
+    cudaSetDevice (0);
+  }
+#endif
+#endif
+
   gStyle->SetCanvasBorderMode(0);
   gStyle->SetCanvasColor(10);
   gStyle->SetFrameFillColor(10);
@@ -397,7 +443,6 @@ int main (int argc, char** argv) {
   foodal = new TCanvas(); 
   foodal->Size(10, 10);
 
-  cudaSetDevice(0);
   runToyFit(argv[1]);
 
   // Print total minimization time
@@ -410,6 +455,10 @@ int main (int argc, char** argv) {
   std::cout << "Total CPU time: " << (totalCPU / CLOCKS_PER_SEC) << std::endl; 
   myCPU = stopProc.tms_utime - startProc.tms_utime;
   std::cout << "Processor time: " << (myCPU / CLOCKS_PER_SEC) << std::endl;
+
+#ifdef TARGET_MPI
+  MPI_Finalize();
+#endif
 
   return 0; 
 }

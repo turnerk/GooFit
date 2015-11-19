@@ -17,6 +17,10 @@ double cpu_bw (double x, double x0, double gamma) {
 }
 
 int main (int argc, char** argv) {
+#ifdef TARGET_MPI
+  MPI_Init (&argc, &argv);
+#endif
+
   // Independent variable. 
   Variable* xvar = new Variable("xvar", -10, 10); 
   
@@ -55,5 +59,8 @@ int main (int argc, char** argv) {
   FitManager fitter(convolution);
   fitter.fit(); 
 
+#ifdef TARGET_MPI
+  MPI_Finalize ();
+#endif
   return 0;
 }

@@ -18,6 +18,9 @@
 using namespace std; 
 
 int main (int argc, char** argv) {
+#ifdef TARGET_MPI
+  MPI_Init(&argc, &argv);
+#endif
   gStyle->SetCanvasBorderMode(0);
   gStyle->SetCanvasColor(10);
   gStyle->SetFrameFillColor(10);
@@ -140,6 +143,9 @@ int main (int argc, char** argv) {
   foo.SaveAs("xhist.png"); 
 
 
+#ifdef TARGET_MPI
+  MPI_Finalize();
+#endif
   
   return 0;
 }

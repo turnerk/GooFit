@@ -7,6 +7,10 @@
 using namespace std; 
 
 int main (int argc, char** argv) {
+#ifdef TARGET_MPI
+  MPI_Init (&argc, &argv);
+#endif
+
   // Independent variable. 
   Variable* xvar = new Variable("xvar", 0, log(1 + RAND_MAX/2)); 
   
@@ -28,5 +32,8 @@ int main (int argc, char** argv) {
   FitManager fitter(exppdf);
   fitter.fit(); 
 
+#ifdef TARGET_MPI
+  MPI_Finalize();
+#endif
   return 0;
 }

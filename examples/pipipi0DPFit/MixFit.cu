@@ -812,7 +812,7 @@ void runToyFit (int ifile, int nfile, bool noPlots = true) {
   m12->numbins = 240;
   m13   = new Variable("m13",   0, 3); 
   m13->numbins = 240;
-  eventNumber = new Variable("eventNumber", 0, INT_MAX);
+  eventNumber = new CountVariable("eventNumber", 0, INT_MAX);
   wSig0 = new Variable("wSig0", 0, 1);
 
   for (int i =0 ;i<nfile;i++){
@@ -1021,7 +1021,7 @@ void makeFullFitVariables () {
   m12   = new Variable("m12",   0, 3);
   m13   = new Variable("m13",   0, 3); 
   m12->numbins = m13->numbins = normBinning; 
-  eventNumber = new Variable("eventNumber", 0, INT_MAX);
+  eventNumber = new CountVariable("eventNumber", 0, INT_MAX);
   wSig0 = new Variable("wSig0", 0, 1);
   wBkg1 = new Variable("wBkg1", 0, 1);
   wBkg2 = new Variable("wBkg2", 0, 1);
@@ -4239,7 +4239,65 @@ bool parseArg (string arg) {
   return true; 
 }
 
+#ifdef TARGET_MPI
+#define MPI_CHECK(err)\
+ {\
+   if(err != MPI_SUCCESS)\
+   {\
+     int size = 0;\
+     char errorString[2048];\
+     MPI_Error_string(err, errorString, &size);\
+     errorString[size] = '\0';\
+     printf ("Error (%i) - %s\n", err, errorString);\
+   }\
+ }
+#endif
+
 int main (int argc, char** argv) {
+#ifdef TARGET_MPI
+  //BH MPI stuff
+  MPI_CHECK(MPI_Init (&argc, &argv));
+
+  int myId, numProcs;
+  MPI_CHECK(MPI_Comm_size(MPI_COMM_WORLD, &numProcs));
+  MPI_CHECK(MPI_Comm_rank(MPI_COMM_WORLD, &myId));
+  
+  //we have MPI, so lets do something slightly different here:
+  int deviceCount;
+  cudaGetDeviceCount(&deviceCount);
+
+  //No way to figure out how many processes per node, so we read the environment variable
+  int nodes = atoi (getenv ("PBS_NUM_NODES"));
+  if (nodes == 0)
+    nodes = 1;
+  int procsPerNode = numProcs/nodes;
+  int localRank = myId % procsPerNode;
+
+  if (deviceCount == 1 && localRank > 1)
+  {
+    printf ("Multi-process to one GPU!\n");
+    cudaSetDevice (0);
+  }
+  else if (procsPerNode > 1 && deviceCount > 1)
+  {
+     if (localRank <= deviceCount)
+     {
+       printf ("setting multiple processes to multiple GPU's\n");
+       cudaSetDevice (localRank);
+     }
+     else
+     {
+       printf ("More multi-processes than multi-gpu's!\n");
+       cudaSetDevice (localRank % deviceCount);
+     }
+  }
+  else
+  {
+    printf ("Multi-GPU's, using one process! %i, [%i,%i]\n", deviceCount, localRank, procsPerNode);
+    cudaSetDevice (0);
+  }
+#endif
+
   gStyle->SetCanvasBorderMode(0);
   gStyle->SetCanvasColor(10);
   gStyle->SetFrameFillColor(10);
@@ -4258,9 +4316,6 @@ int main (int argc, char** argv) {
   //foodal->SetRightMargin(0.13);
   //foodal->SetTopMargin(0.13);
   //foodal->SetLeftMargin(0.13);
-
-
-  cudaSetDevice(0);
 
   int fitToRun = atoi(argv[1]);
   int genResolutions = 0;
@@ -4306,6 +4361,11 @@ int main (int argc, char** argv) {
   std::cout << "Total CPU time: " << (totalCPU / CLOCKS_PER_SEC) << std::endl; 
   myCPU = stopProc.tms_utime - startProc.tms_utime;
   std::cout << "Processor time: " << (myCPU / CLOCKS_PER_SEC) << std::endl;
+
+#ifdef TARGET_MPI
+  //MPI finalize
+  MPI_Finalize ();
+#endif 
 
   return 0; 
 }

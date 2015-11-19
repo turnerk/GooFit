@@ -1,58 +1,7 @@
-#------------------------------------------------------------------------------
-ifeq ($(TARGET_MIC),)
-CXX=nvcc
-LD=g++
-else
-# Intel Xeon Phi/MIC requires using Intel C++ Compiler (ICC)
-CXX=icpc
-LD=icpc
-CXXFLAGS=-mmic -x c++
-endif
-
-CXXFLAGS += -O3
-DEFINEFLAGS = -DDUMMY=dummy 
-
-UNAME=$(shell uname)
-ifeq ($(UNAME), Darwin)
-CXXFLAGS+=-m64
-endif
-
-ifneq ($(CUDAPRINT),)
-DEFINEFLAGS += -DCUDAPRINT=yes
-endif 
-
-ifneq ($(PRINTCALLS),)
-DEFINEFLAGS += -DPRINTCALLS=yes
-endif 
-
-ifneq ($(PROFILE),)
-DEFINEFLAGS += -DPROFILING=yes
-endif 
-
-ifeq ($(TARGET_OMP),)
-# nvcc (CUDA)
-CXXFLAGS += -arch=sm_20
-else
-# OpenMP common flags
-DEFINEFLAGS += -fno-inline -DTHRUST_DEVICE_SYSTEM=THRUST_DEVICE_BACKEND_OMP
-ifeq ($(TARGET_MIC),)
-# GCC/Clang
-DEFINEFLAGS += -fopenmp
-else
-# Intel C++ Compiler (ICC)
-DEFINEFLAGS += -openmp
-endif
-endif 
-
-ifeq ($(CUDALOCATION), )
-CUDALOCATION = /usr/local/cuda/
-endif
-CUDAHEADERS = $(CUDALOCATION)/include/
+include Makefile.config
 
 PWD = $(shell /bin/pwd)
 SRCDIR = $(PWD)/PDFs
-
-INCLUDES += -I$(SRCDIR) -I$(PWD) -I$(CUDAHEADERS) -I$(PWD)/rootstuff 
 
 # GooPdf must be first in CUDAglob, as it defines global variables.
 FUNCTORLIST    = $(SRCDIR)/GooPdf.cu 

@@ -129,7 +129,8 @@ void CudaMinimise (int dev, int fitType) {
 #ifdef CUDAPRINT
   cudaPrintfInit(10000000); 
 #endif
-#ifdef OMP_ON 
+//#ifdef 0 
+#if 0
   int deviceCount;  
   int threadCount;  
 #pragma omp parallel
@@ -156,10 +157,12 @@ void CudaMinimise (int dev, int fitType) {
     }
     cudaSetDevice(tid);
 #else
-  cudaSetDevice(dev);
+  printf ("set device\n"); 
+  //cudaSetDevice(dev);
 #endif
 
-#ifdef OMP_ON
+//#ifdef 0
+#if 0
 #pragma omp master
 {
 #endif
@@ -167,13 +170,57 @@ void CudaMinimise (int dev, int fitType) {
   dm->numbins = 2700; 
   //dm->numbins = 540; 
 
+  printf ("getMCData\n"); 
   getMCData();
   std::cout << "Done getting MC\n"; 
-#ifdef OMP_ON
+//#ifdef 0
+#if 0
 }
 #pragma omp barrier
 #endif
 
+  //we have MPI, so lets do something slightly different here:
+  //int deviceCount;
+  //cudaGetDeviceCount(&deviceCount);
+
+#ifdef TARGET_MPI
+  int myId, numProcs;
+  MPI_Comm_size(MPI_COMM_WORLD, &numProcs);
+  MPI_Comm_rank(MPI_COMM_WORLD, &myId);
+
+  //No way to figure out how many processes per node, so we read the environment variable
+  int nodes = atoi (getenv ("PBS_NUM_NODES"));
+  if (nodes == 0)
+    nodes = 1;
+  int procsPerNode = numProcs/nodes;
+  int localRank = myId % procsPerNode;
+
+  /*
+  if (deviceCount == 1 && localRank > 1)
+  {
+    printf ("Multi-process to one GPU!\n");
+    cudaSetDevice (0);
+  }
+  else if (procsPerNode > 1 && deviceCount > 1)
+  {
+     if (localRank <= deviceCount)
+     {
+       printf ("setting multiple processes to multiple GPU's\n");
+       cudaSetDevice (localRank);
+     }
+     else
+     {
+       printf ("More multi-processes than multi-gpu's!\n");
+       cudaSetDevice (localRank % deviceCount);
+     }
+  }
+  else
+  {
+    printf ("Multi-GPU's, using one process! %i, [%i,%i]\n", deviceCount, localRank, procsPerNode);
+    cudaSetDevice (0);
+  }
+  */ 
+#endif
 
   Variable mean1("kpi_mc_mean1", 0.145402, 0.00001, 0.143, 0.148);
   Variable mean2("kpi_mc_mean2", 0.145465, 0.00001, 0.145, 0.1465);
@@ -223,7 +270,8 @@ void CudaMinimise (int dev, int fitType) {
   resolution.setData(data);
   FitManager mcpdf(&resolution); 
 
-#ifdef OMP_ON
+//#ifdef 0
+#if 0
   #pragma omp master
   {
   std::cout << tid << "Done with data, starting minimisation" << std::endl; 
@@ -237,7 +285,8 @@ void CudaMinimise (int dev, int fitType) {
 
   mcpdf.getMinuitValues(); 
 
-#ifdef OMP_ON
+//#ifdef 0
+#if 0
 #pragma omp barrier
 #endif
 
@@ -313,12 +362,14 @@ void CudaMinimise (int dev, int fitType) {
   comps.push_back(&bkg);
   comps.push_back(&signal); 
 
-#ifdef OMP_ON
+//#ifdef OMP_ON
+#if 0
 #pragma omp master
 {
 #endif
   getData(); 
-#ifdef OMP_ON
+//#ifdef OMP_ON
+#if 0
 }
 #pragma omp barrier
 #endif
@@ -331,7 +382,8 @@ void CudaMinimise (int dev, int fitType) {
   }
   FitManager datapdf(&total); 
   
-#ifdef OMP_ON
+//#ifdef OMP_ON
+#if 0
   std::cout << tid << ": Starting fit\n"; 
 #else
   std::cout << "Starting fit\n"; 
@@ -339,11 +391,13 @@ void CudaMinimise (int dev, int fitType) {
   gettimeofday(&startTime, NULL);
   startCPU = times(&startProc);
   //ROOT::Minuit2::FunctionMinimum* min2 = datapdf.fit();
+
   datapdf.fit(); 
   stopCPU = times(&stopProc);
   gettimeofday(&stopTime, NULL);
 
-#ifdef OMP_ON
+//#ifdef OMP_ON
+#if 0
 #pragma omp barrier
 #endif
   //std::cout << "Minimum: " << *min2 << std::endl;
@@ -382,12 +436,14 @@ void CudaMinimise (int dev, int fitType) {
   } 
 */
   
-#ifdef OMP_ON
+//#ifdef OMP_ON
+#if 0
 #pragma omp master
 {
 #endif
   dm->value = 0.1568; 
-#ifdef OMP_ON
+//#ifdef OMP_ON
+#if 0
 }
 #endif
 /*
@@ -401,7 +457,8 @@ void CudaMinimise (int dev, int fitType) {
 	    << std::endl; 
 */
   
-#ifdef OMP_ON
+//#ifdef OMP_ON
+#if 0
 #pragma omp master
 {
 #endif
@@ -431,7 +488,8 @@ void CudaMinimise (int dev, int fitType) {
   foo->SetLogy(true); 
   foo->SaveAs("zach_CUDA_fit.png"); 
   */
-#ifdef OMP_ON
+//#ifdef OMP_ON
+#if 0
   }  // end master section
   #pragma omp barrier
 }  // end parallel
@@ -439,7 +497,14 @@ void CudaMinimise (int dev, int fitType) {
 
 }
 
+timeval fullStart, fullStop, fullTime;
+
 int main (int argc, char** argv) {
+  gettimeofday (&fullStart, NULL);
+#ifdef TARGET_MPI
+  MPI_Init (&argc, &argv);
+#endif
+
   int gpuDev = 0;   
   gStyle->SetCanvasBorderMode(0);
   gStyle->SetCanvasColor(10);
@@ -482,6 +547,16 @@ int main (int argc, char** argv) {
   std::cout << "Processor time: " << (myCPU / CLOCKS_PER_SEC) << std::endl;
 
   delete binnedData; 
+
+#ifdef TARGET_MPI
+  MPI_Finalize();
+#endif
+
+  gettimeofday (&fullStop, NULL);
+
+  timersub (&fullStop, &fullStart, &fullTime);
+
+  std::cout << "Full time: " << fullTime.tv_sec + fullTime.tv_usec/1000000.0 << " seconds." << std::endl;
 
   return 0; 
 }
