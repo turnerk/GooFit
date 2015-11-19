@@ -216,9 +216,21 @@ __host__ double GooPdf::sumOfNll (int numVars) const {
 
   //if (host_callnumber >= 2) abortWithCudaPrintFlush(__FILE__, __LINE__, getName() + " debug abort", this); 
   thrust::counting_iterator<int> eventIndex(0); 
+#ifdef TARGET_MPI
+  double localResult = thrust::transform_reduce(
+      thrust::make_zip_iterator(thrust::make_tuple(eventIndex, arrayAddress, eventSize)),
+      thrust::make_zip_iterator(thrust::make_tuple(eventIndex + m_iEventsPerTask, arrayAddress, eventSize)),
+      *logger, dummy, cudaPlus);
+
+  double globalResult;
+  MPI_Allreduce(&localResult, &globalResult, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+
+  return globalResult;
+#else
   return thrust::transform_reduce(thrust::make_zip_iterator(thrust::make_tuple(eventIndex, arrayAddress, eventSize)),
 				  thrust::make_zip_iterator(thrust::make_tuple(eventIndex + numEntries, arrayAddress, eventSize)),
 				  *logger, dummy, cudaPlus);   
+#endif
 }
 
 __host__ double GooPdf::calculateNLL () const {
@@ -254,6 +266,7 @@ __host__ double GooPdf::calculateNLL () const {
   fptype ret = sumOfNll(numVars); 
   if (0 == ret) abortWithCudaPrintFlush(__FILE__, __LINE__, getName() + " zero NLL", this); 
   //if (cpuDebug & 1) std::cout << "Full NLL " << host_callnumber << " : " << 2*ret << std::endl;
+
   //setDebugMask(0); 
 
   //if ((cpuDebug & 1) && (host_callnumber >= 1)) abortWithCudaPrintFlush(__FILE__, __LINE__, getName() + " debug abort", this); 
@@ -263,7 +276,7 @@ __host__ double GooPdf::calculateNLL () const {
 __host__ void GooPdf::evaluateAtPoints (Variable* var, std::vector<fptype>& res) {
   // NB: This does not project correctly in multidimensional datasets, because all observables
   // other than 'var' will have, for every event, whatever value they happened to get set to last
-  // time they were set. This is likely to be the value from the last event in whatever dataset
+  // time they were set. This is likely to be the value from the last event in whatever dataset  
   // you were fitting to, but at any rate you don't get the probability-weighted integral over
   // the other observables. 
 
@@ -277,20 +290,26 @@ __host__ void GooPdf::evaluateAtPoints (Variable* var, std::vector<fptype>& res)
     var->value = var->lowerlimit + (i+0.5)*step;
     tempdata.addEvent(); 
   }
-  setData(&tempdata);  
- 
+  setData(&tempdata);
+
   thrust::counting_iterator<int> eventIndex(0); 
   thrust::constant_iterator<int> eventSize(observables.size()); 
   thrust::constant_iterator<fptype*> arrayAddress(dev_event_array); 
   thrust::device_vector<fptype> results(var->numbins); 
 
   MetricTaker evalor(this, getMetricPointer("ptr_to_Eval")); 
+#ifdef TARGET_MPI
+  thrust::transform(thrust::make_zip_iterator(thrust::make_tuple(eventIndex, arrayAddress, eventSize)),
+		    thrust::make_zip_iterator(thrust::make_tuple(eventIndex + m_iEventsPerTask, arrayAddress, eventSize)),
+		    results.begin(),
+		    evalor); 
+#else
   thrust::transform(thrust::make_zip_iterator(thrust::make_tuple(eventIndex, arrayAddress, eventSize)),
 		    thrust::make_zip_iterator(thrust::make_tuple(eventIndex + numEntries, arrayAddress, eventSize)),
 		    results.begin(),
 		    evalor); 
-
-  thrust::host_vector<fptype> h_results = results; 
+#endif
+  thrust::host_vector<fptype> h_results = results;
   res.clear();
   res.resize(var->numbins);
   for (int i = 0; i < var->numbins; ++i) {
@@ -360,7 +379,7 @@ __host__ fptype GooPdf::getValue () {
   thrust::constant_iterator<int> eventSize(observables.size()); 
   thrust::constant_iterator<fptype*> arrayAddress(dev_event_array); 
   thrust::device_vector<fptype> results(1); 
-  
+
   MetricTaker evalor(this, getMetricPointer("ptr_to_Eval"));
   thrust::transform(thrust::make_zip_iterator(thrust::make_tuple(eventIndex, arrayAddress, eventSize)),
 		    thrust::make_zip_iterator(thrust::make_tuple(eventIndex + 1, arrayAddress, eventSize)),
@@ -404,19 +423,17 @@ __host__ fptype GooPdf::normalise () const {
   fptype sum = thrust::transform_reduce(thrust::make_zip_iterator(thrust::make_tuple(binIndex, eventSize, arrayAddress)),
 					thrust::make_zip_iterator(thrust::make_tuple(binIndex + totalBins, eventSize, arrayAddress)),
 					*logger, dummy, cudaPlus); 
- 
+
   if (isnan(sum)) {
     abortWithCudaPrintFlush(__FILE__, __LINE__, getName() + " NaN in normalisation", this); 
   }
   else if (0 >= sum) { 
     abortWithCudaPrintFlush(__FILE__, __LINE__, "Non-positive normalisation", this); 
   }
-
   ret *= sum;
-
-
   if (0 == ret) abortWithCudaPrintFlush(__FILE__, __LINE__, "Zero integral"); 
   host_normalisation[parameters] = 1.0/ret;
+
   return (fptype) ret; 
 }
 
@@ -431,6 +448,7 @@ EXEC_TARGET fptype callFunction (fptype* eventAddress, unsigned int functionIdx,
     timeHistogram[functionIdx*100 + paramIdx] += ((stop - start) * conversion); 
     //printf("Clock: %li %li %li | %u %f\n", (long) start, (long) stop, (long) (stop - start), functionIdx, timeHistogram[functionIdx]); 
   }
+
   return ret; 
 }
 #else 
@@ -444,7 +462,8 @@ EXEC_TARGET fptype callFunction (fptype* eventAddress, unsigned int functionIdx,
 
 // Main operator: Calls the PDF to get a predicted value, then the metric 
 // to get the goodness-of-prediction number which is returned to MINUIT. 
-EXEC_TARGET fptype MetricTaker::operator () (thrust::tuple<int, fptype*, int> t) const {
+EXEC_TARGET fptype MetricTaker::operator () (thrust::tuple<int, fptype*, int> t) const
+{
   // Calculate event offset for this thread. 
   int eventIndex = thrust::get<0>(t);
   int eventSize  = thrust::get<2>(t);
@@ -497,9 +516,12 @@ EXEC_TARGET fptype MetricTaker::operator () (thrust::tuple<int, int, fptype*> t)
   return ret; 
 }
 
-__host__ void GooPdf::getCompProbsAtDataPoints (std::vector<std::vector<fptype> >& values) {
+  //Untest so far, no examples call this function!
+__host__ void GooPdf::getCompProbsAtDataPoints (std::vector<std::vector<fptype> >& values)
+{
   copyParams(); 
   double overall = normalise();
+  std::cout << "normalize () - " << overall << std::endl;
   MEMCPY_TO_SYMBOL(normalisationFactors, host_normalisation, totalParams*sizeof(fptype), 0, cudaMemcpyHostToDevice); 
 
   int numVars = observables.size(); 
@@ -507,33 +529,65 @@ __host__ void GooPdf::getCompProbsAtDataPoints (std::vector<std::vector<fptype> 
     numVars += 2;
     numVars *= -1; 
   }
+
   thrust::device_vector<fptype> results(numEntries); 
   thrust::constant_iterator<int> eventSize(numVars); 
   thrust::constant_iterator<fptype*> arrayAddress(dev_event_array); 
   thrust::counting_iterator<int> eventIndex(0); 
   MetricTaker evalor(this, getMetricPointer("ptr_to_Prob")); 
+
+#ifdef TARGET_MPI
+  //write to results, send to all?
+  thrust::transform(thrust::make_zip_iterator(thrust::make_tuple(eventIndex, arrayAddress, eventSize)),
+		    thrust::make_zip_iterator(thrust::make_tuple(eventIndex + m_iEventsPerTask, arrayAddress, eventSize)),
+		    results.begin(), 
+		    evalor);
+
+  values.clear(); 
+  values.resize(components.size() + 1);
+
+  thrust::host_vector<fptype> host_results = results;
+  for (unsigned int i = 0; i < host_results.size(); ++i) {
+    values[0].push_back(host_results[i]);
+  }
+#else
   thrust::transform(thrust::make_zip_iterator(thrust::make_tuple(eventIndex, arrayAddress, eventSize)),
 		    thrust::make_zip_iterator(thrust::make_tuple(eventIndex + numEntries, arrayAddress, eventSize)),
 		    results.begin(), 
 		    evalor); 
   values.clear(); 
   values.resize(components.size() + 1);
+
   thrust::host_vector<fptype> host_results = results;
   for (unsigned int i = 0; i < host_results.size(); ++i) {
     values[0].push_back(host_results[i]);
   }
-  
+#endif 
+
   for (unsigned int i = 0; i < components.size(); ++i) {
     MetricTaker compevalor(components[i], getMetricPointer("ptr_to_Prob")); 
-    thrust::counting_iterator<int> ceventIndex(0); 
+    thrust::counting_iterator<int> ceventIndex(0);
+#ifdef TARGET_MPI 
+    thrust::transform(thrust::make_zip_iterator(thrust::make_tuple(ceventIndex, arrayAddress, eventSize)),
+		      thrust::make_zip_iterator(thrust::make_tuple(ceventIndex + m_iEventsPerTask, arrayAddress, eventSize)),
+		      results.begin(), 
+		      compevalor); 
+
+    host_results = results;
+    for (unsigned int j = 0; j < host_results.size(); ++j) {
+      values[1 + i].push_back(host_results[j]); 
+    }
+#else
     thrust::transform(thrust::make_zip_iterator(thrust::make_tuple(ceventIndex, arrayAddress, eventSize)),
 		      thrust::make_zip_iterator(thrust::make_tuple(ceventIndex + numEntries, arrayAddress, eventSize)),
 		      results.begin(), 
 		      compevalor); 
+
     host_results = results;
     for (unsigned int j = 0; j < host_results.size(); ++j) {
       values[1 + i].push_back(host_results[j]); 
-    }    
+    }
+#endif
   }
 }
 
@@ -557,6 +611,7 @@ __host__ void GooPdf::transformGrid (fptype* host_output) {
 		    d_vec.begin(), 
 		    *logger); 
 
+  //Extra copy here, fixme later
   thrust::host_vector<fptype> h_vec = d_vec;
   for (unsigned int i = 0; i < totalBins; ++i) host_output[i] = h_vec[i]; 
 }

@@ -52,6 +52,26 @@ Variable::Variable (std::string n, fptype v, fptype e, fptype dn, fptype up)
 {
 }
 
+CountVariable::CountVariable (std::string n) : Variable(n)
+{
+}
+
+CountVariable::CountVariable (std::string n, fptype v) : Variable (n, v)
+{
+}
+
+CountVariable::CountVariable (std::string n, fptype dn, fptype up) : Variable (n, dn, up)
+{
+}
+
+CountVariable::CountVariable (std::string n, fptype v, fptype dn, fptype up) : Variable (n, v, dn, up)
+{
+}
+
+CountVariable::CountVariable (std::string n, fptype v, fptype e, fptype dn, fptype up) : Variable (n, v, dn, up)
+{
+}
+
 Variable::~Variable () {
 }
 

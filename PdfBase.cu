@@ -87,7 +87,8 @@ __host__ void PdfBase::initialiseIndices (std::vector<unsigned int> pindices) {
   
   parameters = totalParams;
   totalParams += (2 + pindices.size() + observables.size()); 
-  /*
+
+  /* 
   std::cout << "host_indices after " << getName() << " initialisation : ";
   for (int i = 0; i < totalParams; ++i) {
     std::cout << host_indices[i] << " ";
@@ -103,6 +104,7 @@ __host__ void PdfBase::initialiseIndices (std::vector<unsigned int> pindices) {
   MEMCPY_TO_SYMBOL(paramIndices, host_indices, totalParams*sizeof(unsigned int), 0, cudaMemcpyHostToDevice); 
 }
 
+/*
 __host__ void PdfBase::setData (std::vector<std::map<Variable*, fptype> >& data) {
   // Old method retained for backwards compatibility 
 
@@ -129,6 +131,7 @@ __host__ void PdfBase::setData (std::vector<std::map<Variable*, fptype> >& data)
   MEMCPY_TO_SYMBOL(functorConstants, &numEvents, sizeof(fptype), 0, cudaMemcpyHostToDevice); 
   delete[] host_array; 
 }
+*/
 
 __host__ void PdfBase::recursiveSetIndices () {
   for (unsigned int i = 0; i < components.size(); ++i) {
@@ -158,39 +161,124 @@ __host__ void PdfBase::setIndices () {
   //std::cout << host_indices[i] << " ";
   //}
   //std::cout << std::endl; 
-
 }
 
-__host__ void PdfBase::setData (UnbinnedDataSet* data) {
+__host__ void PdfBase::setData (UnbinnedDataSet* data)
+{
+  //std::cout << "PdfBase::setData" << std::endl;
   if (dev_event_array) {
     gooFree(dev_event_array);
     SYNCH();
     dev_event_array = 0; 
+
+    m_iEventsPerTask = 0;
   }
 
   setIndices();
   int dimensions = observables.size();
   numEntries = data->getNumEvents(); 
   numEvents = numEntries; 
-  
+
+#ifdef TARGET_MPI
+  int myId, numProcs;
+  MPI_Comm_size (MPI_COMM_WORLD, &numProcs);
+  MPI_Comm_rank (MPI_COMM_WORLD, &myId);
+
+  int perTask = numEvents/numProcs;
+
+  int *counts = new int[numProcs];
+  int *displacements = new int[numProcs];
+
+  //indexing for copying events over!
+  for (int i = 0; i < numProcs - 1; i++)
+    counts[i] = perTask;
+  counts[numProcs - 1] = numEntries - perTask*(numProcs - 1);
+
+  //displacements into the array for indexing!
+  displacements[0] = 0;
+  for (int i = 1; i < numProcs; i++)
+    displacements[i] = displacements[i - 1] + counts[i - 1];
+#endif
+
   fptype* host_array = new fptype[numEntries*dimensions];
-  for (int i = 0; i < numEntries; ++i) {
-    for (obsIter v = obsBegin(); v != obsEnd(); ++v) {
+
+#ifdef TARGET_MPI
+  //This is an array to track if we need to redo indexing
+  int fixme[observables.size ()];
+  memset(fixme, 0, sizeof (int)*observables.size ());
+
+  //printf ("Checking observables for Counts!\n");
+  for (int i = 0; i < observables.size (); i++)
+  {
+    //printf ("%i - %s\n", i, observables[i]->name.c_str ());
+    //cast this variable to see if its one we need to correct for
+    CountVariable *c = dynamic_cast <CountVariable*> (observables[i]);
+    //if it cast, mark it
+    if (c)
+    {
+      fixme[i] = 1;
+      //printf ("%i of %i - %s\n", i, observables.size (), c->name.c_str ());
+    }
+  }
+#endif
+
+  //populate this array with our stuff
+  for (int i = 0; i < numEntries; ++i)
+  {
+    for (obsIter v = obsBegin(); v != obsEnd(); ++v)
+    {
       fptype currVal = data->getValue((*v), i);
       host_array[i*dimensions + (*v)->index] = currVal; 
     }
   }
 
+#ifdef TARGET_MPI
+  // we need to fix our observables indexing to reflect having multiple cards
+  for (int i = 1; i < numProcs; i++)
+  {
+    for (int j = 0; j < counts[i]; j++)
+    {
+      //assumption is that the last observable is the index!
+      for (int k = 0; k < dimensions; k++)
+      {
+        //Its counting, fix the indexing here
+        if (fixme[k] > 0)
+          host_array[(j + displacements[i])*dimensions + k] = float (j);
+      }
+    }
+  }
+  
+  int mystart = displacements[myId];
+  int myend = mystart + counts[myId];
+  int mycount = myend - mystart;
+#endif
+
+#ifdef TARGET_MPI
+  gooMalloc((void**) &dev_event_array, dimensions*mycount*sizeof(fptype));
+  MEMCPY(dev_event_array, host_array + mystart*dimensions, dimensions*mycount*sizeof(fptype), cudaMemcpyHostToDevice);
+  MEMCPY_TO_SYMBOL(functorConstants, &numEvents, sizeof(fptype), 0, cudaMemcpyHostToDevice);
+  delete[] host_array; 
+
+  //update everybody
+  setNumPerTask(this, mycount);
+
+  delete [] counts;
+  delete [] displacements;
+#else
   gooMalloc((void**) &dev_event_array, dimensions*numEntries*sizeof(fptype)); 
   MEMCPY(dev_event_array, host_array, dimensions*numEntries*sizeof(fptype), cudaMemcpyHostToDevice);
   MEMCPY_TO_SYMBOL(functorConstants, &numEvents, sizeof(fptype), 0, cudaMemcpyHostToDevice); 
   delete[] host_array; 
+#endif
 }
 
-__host__ void PdfBase::setData (BinnedDataSet* data) { 
+__host__ void PdfBase::setData (BinnedDataSet* data)
+{ 
   if (dev_event_array) { 
     gooFree(dev_event_array);
     dev_event_array = 0; 
+
+    m_iEventsPerTask = 0;
   }
 
   setIndices();
@@ -200,6 +288,25 @@ __host__ void PdfBase::setData (BinnedDataSet* data) {
   if (!fitControl->binnedFit()) setFitControl(new BinnedNllFit()); 
 
   fptype* host_array = new fptype[numEntries*dimensions]; 
+
+#ifdef TARGET_MPI
+  int myId, numProcs;
+  MPI_Comm_size (MPI_COMM_WORLD, &numProcs);
+  MPI_Comm_rank (MPI_COMM_WORLD, &myId);
+
+  //This is an array to track if we need to redo indexing
+  int fixme[dimensions];
+  memset(fixme, 0, sizeof (int)*dimensions);
+
+  for (int i = 0; i < observables.size (); i++)
+  {
+    //cast this variable to see if its one we need to correct for
+    CountVariable *c = dynamic_cast <CountVariable*> (observables[i]);
+    //if it cast, mark it
+    if (c)
+      fixme[i] = 1;
+  }
+#endif
 
   for (unsigned int i = 0; i < numEntries; ++i) {
     for (obsIter v = obsBegin(); v != obsEnd(); ++v) {
@@ -211,10 +318,61 @@ __host__ void PdfBase::setData (BinnedDataSet* data) {
     numEvents += data->getBinContent(i);
   }
 
-  gooMalloc((void**) &dev_event_array, dimensions*numEntries*sizeof(fptype)); 
-  MEMCPY(dev_event_array, host_array, dimensions*numEntries*sizeof(fptype), cudaMemcpyHostToDevice);
+#if TARGET_MPI
+  int perTask = numEvents/numProcs;
+
+  int *counts = new int[numProcs];
+  int *displacements = new int[numProcs];
+
+  //indexing for copying events over!
+  for (int i = 0; i < numProcs - 1; i++)
+    counts[i] = perTask;
+  counts[numProcs - 1] = numEvents - perTask*(numProcs - 1);
+
+  //displacements into the array for indexing!
+  displacements[0] = 0;
+  for (int i = 1; i < numProcs; i++)
+    displacements[i] = displacements[i - 1] + counts[i - 1];
+
+  // we need to fix our observables indexing to reflect having multiple cards
+  for (int i = 1; i < numProcs; i++)
+  {
+    for (int j = 0; j < counts[i]; j++)
+    {
+      //assumption is that the last observable is the index!
+      for (int k = 0; k < dimensions; k++)
+      {
+        //Its counting, fix the indexing here
+        if (fixme[k] > 0)
+          host_array[(j + displacements[i])*dimensions + dimensions - k] = float (j);
+      }
+    }
+  }
+
+  int mystart = displacements[myId];
+  int myend = mystart + counts[myId];
+  int mycount = myend - mystart;
+#endif
+
+#ifdef TARGET_MPI
+  gooMalloc((void**) &dev_event_array, dimensions*mycount*sizeof(fptype)); 
+  MEMCPY(dev_event_array, host_array + mystart*dimensions, dimensions*mycount*sizeof(fptype), cudaMemcpyHostToDevice);
   MEMCPY_TO_SYMBOL(functorConstants, &numEvents, sizeof(fptype), 0, cudaMemcpyHostToDevice); 
   delete[] host_array; 
+
+  //update our displacements:
+  for (int i = 0; i < numProcs; i++)
+    displacements[i] = 0;
+
+  //update everybody
+  //setDisplacements(this, mycount);
+
+  delete [] counts;
+  delete [] displacements;
+#else
+  gooMalloc((void**) &dev_event_array, dimensions*numEntries*sizeof(fptype)); 
+  MEMCPY(dev_event_array, host_array, dimensions*numEntries*sizeof(fptype), cudaMemcpyHostToDevice);
+#endif
 }
 
 __host__ void PdfBase::generateNormRange () {

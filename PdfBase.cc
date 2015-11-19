@@ -152,5 +152,17 @@ __host__ void PdfBase::storeParameters () const {
     cachedParams[counter++] = host_params[(*v)->index];
   }
 }
+
+__host__ void PdfBase::setNumPerTask (PdfBase *p, const int &c)
+{
+  if (!p)
+    return;
+
+  m_iEventsPerTask = c;
+
+  //for (int i = 0; i < p->components.size (); i++)
+  //  setDisplacements(p->components[i], c);
+}
+
  
 void dummySynch () {}
