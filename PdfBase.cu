@@ -365,7 +365,7 @@ __host__ void PdfBase::setData (BinnedDataSet* data)
     displacements[i] = 0;
 
   //update everybody
-  //setDisplacements(this, mycount);
+  setNumPerTask(this, mycount);
 
   delete [] counts;
   delete [] displacements;
