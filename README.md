@@ -9,16 +9,18 @@ Requirements
  * An nVidia GPU supporting compute capability at least 2.0
 * If building for OpenMP:
  * a compiler supporting OpenMP
+* If building for MPI:
+ * Tested with MVAPICH 2.0, 3.0
 
 Installation
 
 * Clone with git:
 
-        git clone git://github.com/GooFit/GooFit.git
+        git clone git://github.com/galapaegos/GooFit.git
 
 * check that the path setting in Makefile for CUDALOCATION is correct for your system
  * If using OpenMP, CUDALOCATION should point at ./fakecuda
-  * Set TARGET_OMP = 1 in the Makefile
+  * Set TARGET_OMP = 1 in the Makefile.config
   * Put ./fakcuda on your PATH, e.g. export PATH=$PATH:$HOME/GooFit/fakecuda
     (n.b. the use of g++ is hardwired in fakecuda/nvcc; this is bad)
   * Install a copy of CUDA's thrust in ./thrust (there's nothing to compile)
@@ -56,6 +58,9 @@ Running the Example Fit
 * To run the simple fit example type:
         ./simpleFitExample
 (If you didn't define ROOTSYS the data and fits will be written to stdout)	
+
+* To run the simple fit with MPI, type:
+	mpiexec -ppn (#gpus in node) ./simpleFitExample
 
 Acknowledgement
 
