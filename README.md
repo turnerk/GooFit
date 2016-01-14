@@ -11,6 +11,7 @@ Requirements
  * a compiler supporting OpenMP
 * If building for MPI:
  * Tested with MVAPICH 2.0, 3.0
+  * Uses MPI_CXXFLAGS and MPI_LIBS environment variables to conta
 
 Installation
 
@@ -43,6 +44,11 @@ Building the Examples Fits
         cd examples/simpleFit ; gmake all
 (you'll recall that you can set CUDALOCATION and TARGET_OMP on the command line instead of
 modifying the Makefile)
+
+* For MPI users:
+ * Uses MPI_CXXFLAGS and MPI_LIBS environment variables to include the current mvapich working environment. 
+These will need to be configured in order to compile correctly.
+
 
 Running the Example Fit
 
