@@ -84,6 +84,7 @@ typedef double fptype;
 #define MODF modf
 #define SIN sin
 #define SQRT sqrt
+#define RSQRT rsqrt
 #define FLOOR floor
 #define POW pow
 #else 
