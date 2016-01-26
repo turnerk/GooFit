@@ -8,13 +8,13 @@ EXEC_TARGET fptype twoBodyCMmom (const double &rMassSq, const fptype &d1m, const
   fptype sqkin1 = SQRT(kin1);
   //if (kin1 >= 0) kin1 = SQRT(kin1);
   //else kin1 = 1;
-  kin1 = (kin1 >= 0) ? sqkin1 : 1.0;
+  kin1 = (kin1 >= 0.0) ? sqkin1 : 1.0;
 
   fptype kin2 = 1 - POW(d1m-d2m, 2) / rMassSq;
   fptype sqkin2 = SQRT(kin2);
   //if (kin2 >= 0) kin2 = SQRT(kin2);
   //else kin2 = 1; 
-  kin2 = (kin2 >= 0) ? sqkin2 : 1.0;
+  kin2 = (kin2 >= 0.0) ? sqkin2 : 1.0;
 
   return 0.5*SQRT(rMassSq)*kin1*kin2; 
 }
