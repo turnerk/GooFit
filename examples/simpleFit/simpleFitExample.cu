@@ -108,6 +108,7 @@ void fitAndPlot (GooPdf* total, UnbinnedDataSet* data, TH1F& dataHist, Variable*
 
 int main (int argc, char** argv) {
   //MPI setup
+#ifdef TARGET_MPI
   MPI_Status stat;
 
   int numProcs;
@@ -116,6 +117,7 @@ int main (int argc, char** argv) {
   MPI_Init (&argc, &argv);
   MPI_Comm_size (MPI_COMM_WORLD, &numProcs);
   MPI_Comm_rank (MPI_COMM_WORLD, &myId);
+#endif
 
   //setting the device based on the thread
   //cudaSetDevice(myId);
@@ -223,7 +225,9 @@ int main (int argc, char** argv) {
   fitAndPlot(bifur, &bifgdata, bifgHist, xvar, "bifur.png"); 
 
   //MPI finalize
+#ifdef TARGET_MPI
   MPI_Finalize ();
+#endif
    
   return 0;
 }
