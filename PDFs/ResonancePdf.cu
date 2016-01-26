@@ -32,7 +32,8 @@ EXEC_TARGET fptype dampingFactorSquare (const fptype &cmmom, const int &spin, co
   return (spin == 2) ? dfsqres : dfsq;
 }
 
-EXEC_TARGET fptype spinFactor (unsigned int spin, fptype motherMass, fptype daug1Mass, fptype daug2Mass, fptype daug3Mass, fptype m12, fptype m13, fptype m23, unsigned int cyclic_index) {
+EXEC_TARGET fptype spinFactor (unsigned int spin, fptype motherMass, fptype daug1Mass, fptype daug2Mass, fptype daug3Mass, fptype m12, fptype m13, fptype m23, unsigned int cyclic_index)
+{
   if (0 == spin) return 1; // Should not cause branching since every thread evaluates the same resonance at the same time. 
   /*
   // Copied from BdkDMixDalitzAmp
@@ -74,10 +75,17 @@ EXEC_TARGET fptype spinFactor (unsigned int spin, fptype motherMass, fptype daug
     extraterm /= 3;
     sFactor -= extraterm;
   }
+
+  //fptype res = sFactor*sFactor;
+  //fptype extraTerm = ((_mAB - (2*motherMass*motherMass) - (2*_mC*_mC)) + massFactor*pow((motherMass*motherMass - _mC*_mC), 2));
+  //extraTerm /= 3;
+  //res -= extraTerm;
+
   return sFactor; 
+  //return (0 == spin) ? 1 : (2 == spin) ? res : sFactor;
 }
 
-EXEC_TARGET devcomplex<fptype> plainBW (fptype m12, fptype m13, fptype m23, unsigned int* indices) {
+EXEC_TARGET devcomplex<fptype> plainBW (const fptype &m12, const fptype &m13, const fptype &m23, const unsigned int* indices) {
   fptype motherMass             = functorConstants[indices[1]+0];
   fptype daug1Mass              = functorConstants[indices[1]+1];
   fptype daug2Mass              = functorConstants[indices[1]+2];
@@ -105,6 +113,10 @@ EXEC_TARGET devcomplex<fptype> plainBW (fptype m12, fptype m13, fptype m23, unsi
     frFactor =  dampingFactorSquare(nominalDaughterMoms, spin, meson_radius);
     frFactor /= dampingFactorSquare(measureDaughterMoms, spin, meson_radius); 
   }  
+  //fptype frRes = dampingFactorSquare(nominalDaughterMoms, spin, meson_radius);
+  //frRes /= dampingFactorSquare(measureDaughterMoms, spin, meson_radius);
+
+  //frFactor = (0 != spin) ? frRes : frFactor;
  
   // RBW evaluation
   fptype A = (resmass - rMassSq); 
@@ -120,7 +132,7 @@ EXEC_TARGET devcomplex<fptype> plainBW (fptype m12, fptype m13, fptype m23, unsi
   return ret; 
 }
 
-EXEC_TARGET devcomplex<fptype> gaussian (fptype m12, fptype m13, fptype m23, unsigned int* indices) {
+EXEC_TARGET devcomplex<fptype> gaussian (const fptype &m12, const fptype &m13, const fptype &m23, const unsigned int* indices) {
   // indices[1] is unused constant index, for consistency with other function types. 
   fptype resmass                = cudaArray[indices[2]];
   fptype reswidth               = cudaArray[indices[3]];
@@ -139,53 +151,59 @@ EXEC_TARGET devcomplex<fptype> gaussian (fptype m12, fptype m13, fptype m23, uns
   return devcomplex<fptype>(ret, 0); 
 }
 
-EXEC_TARGET fptype hFun (double s, double daug2Mass, double daug3Mass) {
+EXEC_TARGET fptype hFun (const double &s, const double &daug2Mass, const double &daug3Mass) {
   // Last helper function
-  const fptype _pi = 3.14159265359;
+  //const fptype _pi = 3.14159265359;
   double sm   = daug2Mass + daug3Mass;
   double SQRTs = sqrt(s);
   double k_s = twoBodyCMmom(s, daug2Mass, daug3Mass);
+  
+  //double val = ((2/_pi) * (k_s/SQRTs) * log( (SQRTs + 2*k_s)/(sm)));
+  //double val = (M_2_PI*(k_s*RSQRT(s))*LOG((SQRTs + 2*k_s)/(sm)));
 
-  double val = ((2/_pi) * (k_s/SQRTs) * log( (SQRTs + 2*k_s)/(sm)));
-
-  return val;
+  //return val;
+  return (M_2_PI*(k_s*RSQRT(s))*LOG((SQRTs + 2*k_s)/(sm)));
 }
 
-EXEC_TARGET fptype dh_dsFun (double s, double daug2Mass, double daug3Mass) {
+EXEC_TARGET fptype dh_dsFun (const double &s, const double &daug2Mass, const double &daug3Mass) {
   // Yet another helper function
-  const fptype _pi = 3.14159265359;
+  //const fptype _pi = 3.14159265359;
   double k_s = twoBodyCMmom(s, daug2Mass, daug3Mass);
   
-  double val = (hFun(s, daug2Mass, daug3Mass) * (1.0/(8.0*pow(k_s, 2)) - 1.0/(2.0 * s)) + 1.0/(2.0* _pi*s));
+  //double val = (hFun(s, daug2Mass, daug3Mass) * (1.0/(8.0*pow(k_s, 2)) - 1.0/(2.0 * s)) + 1.0/(2.0* _pi*s));
+  double val = (hFun(s, daug2Mass, daug3Mass) * (1.0/(8.0*k_s*k_s)) - 1.0/(2.0 * s)) + 1.0/(2.0*M_PI*s);
   return val;
 }
 
 
-EXEC_TARGET fptype dFun (double s, double daug2Mass, double daug3Mass) {
+EXEC_TARGET fptype dFun (const double &s, const double &daug2Mass, const double &daug3Mass) {
   // Helper function used in Gronau-Sakurai
-  const fptype _pi = 3.14159265359;
+  //const fptype _pi = 3.14159265359;
   double sm   = daug2Mass + daug3Mass;
   double sm24 = sm*sm/4.0;
   double m    = sqrt(s);
   double k_m2 = twoBodyCMmom(s, daug2Mass, daug3Mass);
  
-  double val = 3.0/_pi * sm24/pow(k_m2, 2) * log((m + 2*k_m2)/sm) + m/(2*_pi*k_m2) - sm24*m/(_pi * pow(k_m2, 3));
+  //double val = 3.0/_pi * sm24/pow(k_m2, 2) * log((m + 2*k_m2)/sm) + m/(2*_pi*k_m2) - sm24*m/(_pi * pow(k_m2, 3));
+  double val = 3.0/M_PI * sm24/(k_m2*k_m2) * log((m + 2*k_m2)/sm) + m/(2*M_PI*k_m2) - sm24*m/(M_PI * k_m2);
   return val;
 }
 
-EXEC_TARGET fptype fsFun (double s, double m2, double gam, double daug2Mass, double daug3Mass) {
+EXEC_TARGET fptype fsFun (const double &s, const double &m2, const double &gam, const double &daug2Mass, const double &daug3Mass) {
   // Another G-S helper function
    
   double k_s   = twoBodyCMmom(s,  daug2Mass, daug3Mass);
   double k_Am2 = twoBodyCMmom(m2, daug2Mass, daug3Mass);
    
-  double f     = gam * m2 / POW(k_Am2, 3);
-  f           *= (POW(k_s, 2) * (hFun(s, daug2Mass, daug3Mass) - hFun(m2, daug2Mass, daug3Mass)) + (m2 - s) * pow(k_Am2, 2) * dh_dsFun(m2, daug2Mass, daug3Mass));
+  //double f     = gam * m2 / POW(k_Am2, 3);
+  double f     = gam * m2 / (k_Am2*k_Am2*k_Am2);
+  //f           *= (POW(k_s, 2) * (hFun(s, daug2Mass, daug3Mass) - hFun(m2, daug2Mass, daug3Mass)) + (m2 - s) * pow(k_Am2, 2) * dh_dsFun(m2, daug2Mass, daug3Mass));
+  f           *= ((k_s*k_s) * (hFun(s, daug2Mass, daug3Mass) - hFun(m2, daug2Mass, daug3Mass)) + (m2 - s) * k_Am2*k_Am2 * dh_dsFun(m2, daug2Mass, daug3Mass));
  
   return f;
 }
 
-EXEC_TARGET devcomplex<fptype> gouSak (fptype m12, fptype m13, fptype m23, unsigned int* indices) {
+EXEC_TARGET devcomplex<fptype> gouSak (const fptype &m12, const fptype &m13, const fptype &m23, const unsigned int* indices) {
   fptype motherMass             = functorConstants[indices[1]+0];
   fptype daug1Mass              = functorConstants[indices[1]+1];
   fptype daug2Mass              = functorConstants[indices[1]+2];
@@ -212,7 +230,8 @@ EXEC_TARGET devcomplex<fptype> gouSak (fptype m12, fptype m13, fptype m23, unsig
   
   // Implement Gou-Sak:
 
-  fptype D = (1.0 + dFun(resmass, daug2Mass, daug3Mass) * reswidth/SQRT(resmass));
+  //fptype D = (1.0 + dFun(resmass, daug2Mass, daug3Mass) * reswidth/SQRT(resmass));
+  fptype D = (1.0 + dFun(resmass, daug2Mass, daug3Mass) * reswidth*RSQRT(resmass));
   fptype E = resmass - rMassSq + fsFun(rMassSq, resmass, reswidth, daug2Mass, daug3Mass);
   fptype F = SQRT(resmass) * reswidth * POW(measureDaughterMoms / nominalDaughterMoms, 2.0*spin + 1) * frFactor;
 
@@ -225,7 +244,7 @@ EXEC_TARGET devcomplex<fptype> gouSak (fptype m12, fptype m13, fptype m23, unsig
 }
 
 
-EXEC_TARGET devcomplex<fptype> lass (fptype m12, fptype m13, fptype m23, unsigned int* indices) {
+EXEC_TARGET devcomplex<fptype> lass (const fptype &m12, const fptype &m13, const fptype &m23, const unsigned int* indices) {
   fptype motherMass             = functorConstants[indices[1]+0];
   fptype daug1Mass              = functorConstants[indices[1]+1];
   fptype daug2Mass              = functorConstants[indices[1]+2];
@@ -293,7 +312,7 @@ EXEC_TARGET devcomplex<fptype> lass (fptype m12, fptype m13, fptype m23, unsigne
 }
 
 
-EXEC_TARGET devcomplex<fptype> nonres (fptype m12, fptype m13, fptype m23, unsigned int* indices) {
+EXEC_TARGET devcomplex<fptype> nonres (const fptype &m12, const fptype &m13, const fptype &m23, const unsigned int* indices) {
   return devcomplex<fptype>(1, 0); 
 }
 
