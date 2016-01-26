@@ -54,12 +54,12 @@ EXEC_TARGET bool inDalitz (const fptype &m12, const fptype &m13, const fptype &b
   return m12less && m12grea && m13less && m13grea; 
 }
 
-EXEC_TARGET inline int parIndexFromResIndex (int resIndex) {
+EXEC_TARGET inline int parIndexFromResIndex (const int &resIndex) {
   return resonanceOffset + resIndex*resonanceSize; 
 }
 
-EXEC_TARGET devcomplex<fptype> getResonanceAmplitude (fptype m12, fptype m13, fptype m23, 
-						     unsigned int functionIdx, unsigned int pIndex) {
+EXEC_TARGET devcomplex<fptype> getResonanceAmplitude (const fptype &m12, const fptype &m13, const fptype &m23, 
+						     const unsigned int &functionIdx, const unsigned int &pIndex) {
   resonance_function_ptr func = reinterpret_cast<resonance_function_ptr>(device_function_table[functionIdx]);
   return (*func)(m12, m13, m23, paramIndices + pIndex); 
 }

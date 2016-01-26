@@ -4,8 +4,8 @@
 #include "ResonancePdf.hh"
 
 EXEC_TARGET bool inDalitz (const fptype &m12, const fptype &m13, const fptype &bigM, const fptype &dm1, const fptype &dm2, const fptype &dm3); 
-EXEC_TARGET devcomplex<fptype> getResonanceAmplitude (fptype m12, fptype m13, fptype m23, 
-						      unsigned int functionIdx, unsigned int pIndex); 
+EXEC_TARGET devcomplex<fptype> getResonanceAmplitude (const fptype &m12, const fptype &m13, const fptype &m23, 
+						      const unsigned int &functionIdx, const unsigned int &pIndex); 
 
 enum DaughterPair {PAIR_12 = 0, PAIR_13, PAIR_23}; 
 
