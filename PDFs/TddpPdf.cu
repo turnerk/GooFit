@@ -106,22 +106,16 @@ EXEC_TARGET ThreeComplex device_Tddp_calcIntegrals (fptype m12, fptype m13, int 
 }
 
 EXEC_TARGET fptype device_Tddp (fptype* evt, fptype* p, unsigned int* indices) {
-  __shared__ int idx[8];
-  
-#pragma unroll
-  for (int i = 0; i < 8; i++)
-    idx[i] = indices[i];
+  fptype motherMass = functorConstants[indices[1] + 0]; 
+  fptype daug1Mass  = functorConstants[indices[1] + 1]; 
+  fptype daug2Mass  = functorConstants[indices[1] + 2]; 
+  fptype daug3Mass  = functorConstants[indices[1] + 3]; 
 
-  fptype motherMass = functorConstants[idx[1] + 0]; 
-  fptype daug1Mass  = functorConstants[idx[1] + 1]; 
-  fptype daug2Mass  = functorConstants[idx[1] + 2]; 
-  fptype daug3Mass  = functorConstants[idx[1] + 3]; 
-
-  fptype m12 = evt[indices[4 + idx[0]]]; 
-  fptype m13 = evt[indices[5 + idx[0]]];
+  fptype m12 = evt[indices[4 + indices[0]]]; 
+  fptype m13 = evt[indices[5 + indices[0]]];
 
   if (!inDalitz(m12, m13, motherMass, daug1Mass, daug2Mass, daug3Mass)) return 0; 
-  int evtNum = (int) FLOOR(0.5 + evt[indices[6 + idx[0]]]); 
+  int evtNum = (int) FLOOR(0.5 + evt[indices[6 + indices[0]]]); 
 
   devcomplex<fptype> sumWavesA(0, 0);
   devcomplex<fptype> sumWavesB(0, 0); 
@@ -129,8 +123,8 @@ EXEC_TARGET fptype device_Tddp (fptype* evt, fptype* p, unsigned int* indices) {
   devcomplex<fptype> sumRateAB(0, 0); 
   devcomplex<fptype> sumRateBB(0, 0); 
 
-  unsigned int numResonances = idx[6]; 
-  unsigned int cacheToUse    = idx[7]; 
+  unsigned int numResonances = indices[6]; 
+  unsigned int cacheToUse    = indices[7]; 
 
 #pragma unroll
   for (int i = 0; i < numResonances; ++i) {
@@ -183,12 +177,12 @@ EXEC_TARGET fptype device_Tddp (fptype* evt, fptype* p, unsigned int* indices) {
     sumWavesB += matrixelement; 
   } 
 
-  fptype _tau     = p[idx[2]];
-  fptype _xmixing = p[idx[3]];
-  fptype _ymixing = p[idx[4]];
+  fptype _tau     = p[indices[2]];
+  fptype _xmixing = p[indices[3]];
+  fptype _ymixing = p[indices[4]];
   
-  fptype _time    = evt[indices[2 + idx[0]]];
-  fptype _sigma   = evt[indices[3 + idx[0]]];
+  fptype _time    = evt[indices[2 + indices[0]]];
+  fptype _sigma   = evt[indices[3 + indices[0]]];
 
   //if ((gpuDebug & 1) && (0 == BLOCKIDX) && (0 == THREADIDX)) 
   //if (0 == evtNum) printf("TDDP: (%f, %f) (%f, %f)\n", sumWavesA.real, sumWavesA.imag, sumWavesB.real, sumWavesB.imag);
@@ -212,7 +206,7 @@ EXEC_TARGET fptype device_Tddp (fptype* evt, fptype* p, unsigned int* indices) {
 
   // Cannot use callFunction on resolution function. 
   int effFunctionIdx = parIndexFromResIndex(numResonances); 
-  int resFunctionIdx = idx[5]; 
+  int resFunctionIdx = indices[5]; 
   int resFunctionPar = 2 + effFunctionIdx; 
   fptype ret = 0; 
   int md0_offset = 0; 
@@ -220,9 +214,9 @@ EXEC_TARGET fptype device_Tddp (fptype* evt, fptype* p, unsigned int* indices) {
     // In this case there are multiple resolution functions, they are stored after the efficiency function,
     // and which one we use depends on the measured mother-particle mass. 
     md0_offset = 1; 
-    fptype massd0 = evt[indices[7 + idx[0]]]; 
-    fptype minMass = functorConstants[idx[1] + 6];
-    fptype md0Step = functorConstants[idx[1] + 7];
+    fptype massd0 = evt[indices[7 + indices[0]]]; 
+    fptype minMass = functorConstants[indices[1] + 6];
+    fptype md0Step = functorConstants[indices[1] + 7];
     int res_to_use = (massd0 <= minMass) ? 0 : (int) FLOOR((massd0 - minMass) / md0Step); 
     int maxFcn     = indices[2+effFunctionIdx]; 
     if (res_to_use > maxFcn) res_to_use = maxFcn; 
@@ -252,7 +246,7 @@ EXEC_TARGET fptype device_Tddp (fptype* evt, fptype* p, unsigned int* indices) {
   // because it depends on the momenta of the pi+ and pi-,
   // which don't change even though we tagged a D0 as D0bar. 
   
-  fptype mistag = functorConstants[idx[1] + 5]; 
+  fptype mistag = functorConstants[indices[1] + 5]; 
   if (mistag > 0) { // This should be either true or false for all events, so no branch is caused.
     // See header file for explanation of 'mistag' variable - it is actually the probability
     // of having the correct sign, given that we have a correctly reconstructed D meson. 

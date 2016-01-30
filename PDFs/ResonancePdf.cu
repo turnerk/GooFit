@@ -3,20 +3,22 @@
 EXEC_TARGET fptype twoBodyCMmom (const double &rMassSq, const fptype &d1m, const fptype &d2m) {
   // For A -> B + C, calculate momentum of B and C in rest frame of A. 
   // PDG 38.16.
+  fptype dpd = d1m + d2m;
+  fptype dmd = d1m - d2m;
+  fptype irms = 1.0/rMassSq;
+  fptype sq = SQRT(rMassSq);
+  fptype dpd2 = dpd*dpd;
+  fptype dmd2 = dmd*dmd;
 
-  fptype kin1 = 1 - POW(d1m+d2m, 2) / rMassSq;
+  fptype kin1 = 1 - dpd2 * irms;
+  fptype kin2 = 1 - dmd2 * irms;
   fptype sqkin1 = SQRT(kin1);
-  //if (kin1 >= 0) kin1 = SQRT(kin1);
-  //else kin1 = 1;
-  kin1 = (kin1 >= 0.0) ? sqkin1 : 1.0;
-
-  fptype kin2 = 1 - POW(d1m-d2m, 2) / rMassSq;
   fptype sqkin2 = SQRT(kin2);
-  //if (kin2 >= 0) kin2 = SQRT(kin2);
-  //else kin2 = 1; 
+
+  kin1 = (kin1 >= 0.0) ? sqkin1 : 1.0;
   kin2 = (kin2 >= 0.0) ? sqkin2 : 1.0;
 
-  return 0.5*SQRT(rMassSq)*kin1*kin2; 
+  return 0.5*sq*kin1*kin2; 
 }
 
 
@@ -65,13 +67,22 @@ EXEC_TARGET fptype spinFactor (unsigned int spin, fptype motherMass, fptype daug
   fptype _mBC = (PAIR_12 == cyclic_index ? m23 : (PAIR_13 == cyclic_index ? m12 : m13)); 
   fptype _mAB = (PAIR_12 == cyclic_index ? m12 : (PAIR_13 == cyclic_index ? m13 : m23)); 
 
+  fptype _mA2 = _mA*_mA;
+  fptype _mB2 = _mB*_mB;
+  fptype _mC2 = _mC*_mC;
+
+  fptype motherMass2 = motherMass*motherMass; 
+
   fptype massFactor = 1.0/_mAB;
   fptype sFactor = -1; 
-  sFactor *= ((_mBC - _mAC) + (massFactor*(motherMass*motherMass - _mC*_mC)*(_mA*_mA-_mB*_mB)));
+  sFactor *= ((_mBC - _mAC) + (massFactor*(motherMass2 - _mC2)*(_mA2 - _mB2)));
+
+  fptype mc2 = motherMass2 - _mC2;
+  fptype ab = _mA2 - _mB2;
   if (2 == spin) {
     sFactor *= sFactor; 
-    fptype extraterm = ((_mAB-(2*motherMass*motherMass)-(2*_mC*_mC))+massFactor*pow((motherMass*motherMass-_mC*_mC),2));
-    extraterm *= ((_mAB-(2*_mA*_mA)-(2*_mB*_mB))+massFactor*pow((_mA*_mA-_mB*_mB),2));
+    fptype extraterm = ((_mAB - (2*motherMass2) - (2*_mC2)) + massFactor*mc2*mc2);
+    extraterm *= ((_mAB - (2*_mA2) - (2*_mB2)) + massFactor*ab*ab);
     extraterm /= 3;
     sFactor -= extraterm;
   }

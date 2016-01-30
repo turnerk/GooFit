@@ -13,7 +13,7 @@ const int resonanceOffset_DP = 4; // Offset of the first resonance into the para
 // own cache, hence the '10'. Ten threads should be enough for anyone! 
 MEM_DEVICE devcomplex<fptype>* cResonances[10]; 
 
-EXEC_TARGET inline int parIndexFromResIndex_DP (int resIndex) {
+EXEC_TARGET inline int parIndexFromResIndex_DP (const int &resIndex) {
   return resonanceOffset_DP + resIndex*resonanceSize; 
 }
 
@@ -63,6 +63,7 @@ EXEC_TARGET fptype device_DalitzPlot (fptype* evt, fptype* p, unsigned int* indi
   unsigned int numResonances = indices[2]; 
   unsigned int cacheToUse    = indices[3]; 
 
+#pragma unroll
   for (int i = 0; i < numResonances; ++i) {
     int paramIndex  = parIndexFromResIndex_DP(i);
     fptype amp_real = p[indices[paramIndex+0]];
@@ -339,12 +340,12 @@ SpecialResonanceCalculator::SpecialResonanceCalculator (int pIdx, unsigned int r
 {}
 
 EXEC_TARGET devcomplex<fptype> SpecialResonanceCalculator::operator () (thrust::tuple<int, fptype*, int> t) const {
+  unsigned int* indices = paramIndices + parameters;   // Jump to DALITZPLOT position within parameters array
   // Calculates the BW values for a specific resonance. 
   devcomplex<fptype> ret;
   int evtNum = thrust::get<0>(t); 
   fptype* evt = thrust::get<1>(t) + (evtNum * thrust::get<2>(t)); 
 
-  unsigned int* indices = paramIndices + parameters;   // Jump to DALITZPLOT position within parameters array
   fptype m12 = evt[indices[2 + indices[0]]]; 
   fptype m13 = evt[indices[3 + indices[0]]];
 
