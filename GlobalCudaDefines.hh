@@ -108,6 +108,7 @@ typedef float fptype;
 #define MODF modff
 #define SIN sinf
 #define SQRT sqrtf
+#define RSQRT rsqrtf
 #define FLOOR floorf 
 #define POW powf
 #endif 
