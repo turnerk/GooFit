@@ -372,6 +372,22 @@ void getToyData (float sigweight = 0.9) {
     //if (dtime->value < dtime->lowerlimit) continue;
     //if (dtime->value > dtime->upperlimit) continue; 
 
+    /*
+    vars.push_back(m12);
+    vars.push_back(m13);
+    vars.push_back(dtime);
+    vars.push_back(sigma);
+    vars.push_back(eventNumber);
+    vars.push_back(wSig0);
+    */
+
+    std::vector <fptype> list;
+    list.push_back (m12->value);
+    list.push_back (m13->value);
+    list.push_back (dtime->value);
+    list.push_back (sigma->value);
+    list.push_back (data->getNumEvents ());
+
     double prob = donram.Uniform(); 
     double resolution = donram.Gaus(0, 1);
     dtime->value += resolution*sigma->value; 
@@ -382,8 +398,12 @@ void getToyData (float sigweight = 0.9) {
     }while(md0 <= 1.8654 + 0.0075*md0_lower_window||md0 >= 1.8654 + 0.0075*md0_upper_window);
 //    wSig0->value = sigweight;
     wSig0->value = calcToyWeight(sigweight, md0);
+    list.push_back (wSig0->value);
+
+    data->insertEventVector (list);
+
     sigprob += wSig0->value;
-    data->addEvent(); 
+    //data->addEvent(); 
     nsig ++;
 
     

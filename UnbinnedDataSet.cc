@@ -91,6 +91,44 @@ void UnbinnedDataSet::addEventVector (std::vector<fptype>& vals, fptype /*weight
   data.push_back(currEvent); 
 }
 
+void UnbinnedDataSet::insertEventVector (std::vector<fptype> &vals, fptype)
+{
+  numEventsAdded++;
+
+  varConstIt currVar = varsBegin();
+  std::map <Variable*, fptype> currEvent;
+  for (int i = 0; i < vals.size (); i++)
+  {
+    assert (currVar != varsEnd());
+    double currVal = vals[i]; 
+    if (currVal < (*currVar)->lowerlimit) {
+      std::cout << "Warning: Value " 
+		<< currVal 
+		<< " less than minimum "
+		<< (*currVar)->lowerlimit
+		<< " for "
+		<< (*currVar)->name
+		<< "; clamping to minimum.\n";
+      currVal = (*currVar)->lowerlimit; 
+    }
+    if (currVal > (*currVar)->upperlimit) {
+      std::cout << "Warning: Value " 
+		<< currVal 
+		<< " more than maximum "
+		<< (*currVar)->upperlimit
+		<< " for "
+		<< (*currVar)->name
+		<< "; clamping to maximum.\n";
+      currVal = (*currVar)->upperlimit; 
+    }
+
+    currEvent[*currVar] = currVal;
+    ++currVar;
+  }
+  
+  data.push_back (currEvent);
+}
+
 void UnbinnedDataSet::loadEvent (int idx) {
   if (idx >= getNumEvents()) {
     std::cout << "UnbinnedDataSet error: Attempt to load event "
