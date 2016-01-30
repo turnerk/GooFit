@@ -116,8 +116,13 @@ void getToyData (std::string toyFileName) {
 
     // EXERCISE 3: Use both the above. 
 
-    eventNumber->value = data->getNumEvents(); 
-    data->addEvent(); 
+    //eventNumber->value = data->getNumEvents(); 
+    //data->addEvent(); 
+
+    std::vector <fptype> list;
+    list.push_back (m12->value);
+    list.push_back (m13->value);
+    data->insertEventVector(list);
 
     dalitzplot.Fill(m12->value, m13->value); 
   }
