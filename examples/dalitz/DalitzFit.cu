@@ -71,6 +71,9 @@ void getToyData (std::string toyFileName) {
   vars.push_back(eventNumber); 
   data = new UnbinnedDataSet(vars); 
 
+  int len = 2048;
+  char tmp[len];
+
   std::ifstream reader;
   reader.open(toyFileName.c_str()); 
   std::string buffer;
@@ -82,6 +85,8 @@ void getToyData (std::string toyFileName) {
 
   double dummy = 0; 
   while (!reader.eof()) {
+    reader.getline (tmp, len, '\n');
+    /*
     reader >> dummy;
     reader >> dummy;      // m23, m(pi+ pi-), called m12 in processToyRoot convention. 
     reader >> m12->value; // Already swapped according to D* charge. m12 = m(pi+pi0)
@@ -118,6 +123,12 @@ void getToyData (std::string toyFileName) {
 
     //eventNumber->value = data->getNumEvents(); 
     //data->addEvent(); 
+    */
+
+    //sscanf the buffer, 20 elements
+    //sscanf (tmp, "%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf", &dummy, &dummy, &m12->value, &m13->value, &dummy, &dummy,
+    //	&dummy, &dummy, &dummy, &dummy, &dummy, &dummy, &dummy, &dummy, &dummy, &dummy, &dummy, &dummy, &dummy, &dummy);
+    sscanf (tmp, "%lf %lf %lf %lf", &dummy, &dummy, &m12->value, &m13->value);
 
     std::vector <fptype> list;
     list.push_back (m12->value);
@@ -128,9 +139,11 @@ void getToyData (std::string toyFileName) {
     dalitzplot.Fill(m12->value, m13->value); 
   }
 
+#if 0
   dalitzplot.SetStats(false); 
   dalitzplot.Draw("colz");
   foodal->SaveAs("dalitzplot.png"); 
+#endif
 }
 
 GooPdf* makeKzeroVeto () {
@@ -381,6 +394,7 @@ void runToyFit (std::string toyFileName) {
   
   gettimeofday(&startTime, NULL);
   startCPU = times(&startProc);
+  datapdf.setMaxCalls (10);
   datapdf.fit(); 
   stopCPU = times(&stopProc);
   gettimeofday(&stopTime, NULL);

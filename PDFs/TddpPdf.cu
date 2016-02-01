@@ -30,10 +30,10 @@ EXEC_TARGET bool inDalitz (const fptype &m12, const fptype &m13, const fptype &b
  
   // Calculate energies of 1 and 3 particles in m12 rest frame. 
   //fptype e1star = 0.5 * (m12 - dm2*dm2 + dm1*dm1) / SQRT(m12); 
-  fptype e1star = 0.5 * (m12 - dm22 + dm11) * RSQRT(m12); 
+  fptype e1star = 0.5 * (m12 - dm22 + dm11) / SQRT(m12); 
   fptype e1star1 = e1star*e1star;
   //fptype e3star = 0.5 * (bigM*bigM - m12 - dm3*dm3) / SQRT(m12); 
-  fptype e3star = 0.5 * (bigM*bigM - m12 - dm33) * RSQRT(m12); 
+  fptype e3star = 0.5 * (bigM*bigM - m12 - dm33) / SQRT(m12); 
   fptype e3star3 = e3star*e3star;
 
   fptype rte1mdm11 = SQRT(e1star1 - dm11);
