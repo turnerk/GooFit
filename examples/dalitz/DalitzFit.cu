@@ -122,6 +122,7 @@ void getToyData (std::string toyFileName) {
     std::vector <fptype> list;
     list.push_back (m12->value);
     list.push_back (m13->value);
+    list.push_back (data->getNumEvents ());
     data->insertEventVector(list);
 
     dalitzplot.Fill(m12->value, m13->value); 
