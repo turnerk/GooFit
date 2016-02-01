@@ -116,8 +116,19 @@ void getToyData (std::string toyFileName) {
 
     // EXERCISE 3: Use both the above. 
 
+<<<<<<< HEAD
     eventNumber->value = data->getNumEvents(); 
     data->addEvent(); 
+=======
+    //eventNumber->value = data->getNumEvents(); 
+    //data->addEvent(); 
+
+    std::vector <fptype> list;
+    list.push_back (m12->value);
+    list.push_back (m13->value);
+    list.push_back (data->getNumEvents ());
+    data->insertEventVector(list);
+>>>>>>> 80d3a64... Rather than constantly recreate the data structure, calling insertion instead to just place the events in.
 
     dalitzplot.Fill(m12->value, m13->value); 
   }
