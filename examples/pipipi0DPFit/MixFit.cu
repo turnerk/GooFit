@@ -1890,13 +1890,13 @@ void makeDalitzPlots (GooPdf* overallSignal, string plotdir = "./plots_from_mixf
 	num_sigma_pdf[currM23Bin] += pdfValues[0][j]; 
 
 	totalPdf += pdfValues[0][j]; 
-	if (isnan(pdfValues[0][j])) {
+	if (std::isnan(pdfValues[0][j])) {
 	  std::cout << "Major problem: " 
 		    << k << " " << j 
 		    << std::endl;
 	  assert(false);
 	}
-	if (isinf(pdfValues[0][j])) {
+	if (std::isinf(pdfValues[0][j])) {
 	  std::cout << "Infinity " << k << " " << j << std::endl;
 	  assert(false); 
 	}
@@ -3866,7 +3866,7 @@ void runEfficiencyFit (int which) {
     dalitz_pdf_hist.Fill(currVal, currVal2, pdfValues[0][j]);
 
     totalPdf += pdfValues[0][j]; 
-    if (isnan(pdfValues[0][j])) {
+    if (std::isnan(pdfValues[0][j])) {
       std::cout << "Major problem: " 
 		<< currVal << " "
 		<< currVal2 << " "
@@ -3874,7 +3874,7 @@ void runEfficiencyFit (int which) {
 		<< std::endl;
       assert(false);
     }
-    if (isinf(pdfValues[0][j])) {
+    if (std::isinf(pdfValues[0][j])) {
       std::cout << "Infinity " << j << std::endl;
       assert(false); 
     }
