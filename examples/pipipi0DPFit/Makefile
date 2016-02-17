@@ -3,6 +3,8 @@ include ../../Makefile.config
 #------------------------------------------------------------------------------
 GOOFITDIR = ${PWD}/../../
 
+CXXFLAGS += -std=c++11
+
 INCLUDES += -I$(GOOFITDIR) -I$(GOOFITDIR)/rootstuff -I$(GOOFITDIR)/PDFs/
 LIBS += -L$(GOOFITDIR)/rootstuff -lRootUtils
 
