@@ -13,11 +13,16 @@ const int resonanceOffset_DP = 4; // Offset of the first resonance into the para
 // own cache, hence the '10'. Ten threads should be enough for anyone! 
 MEM_DEVICE devcomplex<fptype>* cResonances[10]; 
 
-EXEC_TARGET inline int parIndexFromResIndex_DP (int resIndex) {
+EXEC_TARGET inline int parIndexFromResIndex_DP (const int &resIndex) {
   return resonanceOffset_DP + resIndex*resonanceSize; 
 }
 
-EXEC_TARGET devcomplex<fptype> device_DalitzPlot_calcIntegrals (fptype m12, fptype m13, int res_i, int res_j, fptype* p, unsigned int* indices) {
+EXEC_TARGET devcomplex<fptype> device_DalitzPlot_calcIntegrals (const fptype &m12, const fptype &m13, const int &res_i, const int &res_j, fptype* __restrict__ p, unsigned int* __restrict__ indices) {
+  int idx[2];
+  idx[1] = indices[1];
+
+  //__ldg for restrict?
+  //__ldg(&indices[1]);
   // Calculates BW_i(m12, m13) * BW_j^*(m12, m13). 
   // This calculation is in a separate function so
   // it can be cached. Note that this function expects
@@ -25,10 +30,10 @@ EXEC_TARGET devcomplex<fptype> device_DalitzPlot_calcIntegrals (fptype m12, fpty
   // observed points, that's why it doesn't use 
   // cResonances. No need to cache the values at individual
   // grid points - we only care about totals. 
-  fptype motherMass = functorConstants[indices[1] + 0]; 
-  fptype daug1Mass  = functorConstants[indices[1] + 1]; 
-  fptype daug2Mass  = functorConstants[indices[1] + 2]; 
-  fptype daug3Mass  = functorConstants[indices[1] + 3];  
+  fptype motherMass = functorConstants[idx[1] + 0]; 
+  fptype daug1Mass  = functorConstants[idx[1] + 1]; 
+  fptype daug2Mass  = functorConstants[idx[1] + 2]; 
+  fptype daug3Mass  = functorConstants[idx[1] + 3];  
 
   devcomplex<fptype> ret; 
   if (!inDalitz(m12, m13, motherMass, daug1Mass, daug2Mass, daug3Mass)) return ret;
@@ -48,32 +53,40 @@ EXEC_TARGET devcomplex<fptype> device_DalitzPlot_calcIntegrals (fptype m12, fpty
 }
 
 EXEC_TARGET fptype device_DalitzPlot (fptype* evt, fptype* p, unsigned int* indices) {
-  fptype motherMass = functorConstants[indices[1] + 0]; 
-  fptype daug1Mass  = functorConstants[indices[1] + 1]; 
-  fptype daug2Mass  = functorConstants[indices[1] + 2]; 
-  fptype daug3Mass  = functorConstants[indices[1] + 3]; 
+  int idx[4];
+  idx[0] = indices[0];
+  idx[1] = indices[1];
+  idx[2] = indices[2];
+  idx[3] = indices[3];
 
-  fptype m12 = evt[indices[2 + indices[0]]]; 
-  fptype m13 = evt[indices[3 + indices[0]]];
+  fptype motherMass = functorConstants[idx[1] + 0]; 
+  fptype daug1Mass  = functorConstants[idx[1] + 1]; 
+  fptype daug2Mass  = functorConstants[idx[1] + 2]; 
+  fptype daug3Mass  = functorConstants[idx[1] + 3]; 
+
+  fptype m12 = evt[indices[2 + idx[0]]]; 
+  fptype m13 = evt[indices[3 + idx[0]]];
 
   if (!inDalitz(m12, m13, motherMass, daug1Mass, daug2Mass, daug3Mass)) return 0; 
-  int evtNum = (int) FLOOR(0.5 + evt[indices[4 + indices[0]]]); 
+  int evtNum = (int) FLOOR(0.5 + evt[indices[4 + idx[0]]]); 
 
   devcomplex<fptype> totalAmp(0, 0);
-  unsigned int numResonances = indices[2]; 
-  unsigned int cacheToUse    = indices[3]; 
+  unsigned int numResonances = idx[2]; 
+  unsigned int cacheToUse    = idx[3]; 
 
+  int enr = evtNum*numResonances;
+//#pragma unroll
   for (int i = 0; i < numResonances; ++i) {
     int paramIndex  = parIndexFromResIndex_DP(i);
     fptype amp_real = p[indices[paramIndex+0]];
     fptype amp_imag = p[indices[paramIndex+1]];
 
-    devcomplex<fptype> matrixelement((cResonances[cacheToUse][evtNum*numResonances + i]).real,
-				     (cResonances[cacheToUse][evtNum*numResonances + i]).imag); 
+    devcomplex<fptype> matrixelement((cResonances[cacheToUse][enr + i]).real,
+				     (cResonances[cacheToUse][enr + i]).imag); 
     matrixelement.multiply(amp_real, amp_imag); 
     totalAmp += matrixelement; 
   } 
-
+   
   fptype ret = norm2(totalAmp); 
   int effFunctionIdx = parIndexFromResIndex_DP(numResonances); 
   fptype eff = callFunction(evt, indices[effFunctionIdx], indices[effFunctionIdx + 1]); 

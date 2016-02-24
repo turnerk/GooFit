@@ -15,29 +15,51 @@ const unsigned int SPECIAL_RESOLUTION_FLAG = 999999999;
 // own cache, hence the '10'. Ten threads should be enough for anyone! 
 MEM_DEVICE WaveHolder* cWaves[10]; 
 
-EXEC_TARGET bool inDalitz (fptype m12, fptype m13, fptype bigM, fptype dm1, fptype dm2, fptype dm3) {
-  if (m12 < POW(dm1 + dm2, 2)) return false; // This m12 cannot exist, it's less than the square of the (1,2) particle mass.
-  if (m12 > POW(bigM - dm3, 2)) return false;   // This doesn't work either, there's no room for an at-rest 3 daughter. 
-  
+EXEC_TARGET bool inDalitz (const fptype &m12, const fptype &m13, const fptype &bigM, const fptype &dm1, const fptype &dm2, const fptype &dm3) {
+  fptype dm1pdm2 = dm1 + dm2;
+  fptype bigMmdm3 = bigM - dm3;
+ 
+  bool m12less = (m12 < dm1pdm2*dm1pdm2) ? false : true; 
+  //if (m12 < dm1pdm2*dm1pdm2) return false; // This m12 cannot exist, it's less than the square of the (1,2) particle mass.
+  bool m12grea = (m12 > bigMmdm3*bigMmdm3) ? false : true;
+  //if (m12 > bigMmdm3*bigMmdm3) return false;   // This doesn't work either, there's no room for an at-rest 3 daughter. 
+
+  fptype dm11 = dm1*dm1; 
+  fptype dm22 = dm2*dm2;
+  fptype dm33 = dm3*dm3;
+ 
   // Calculate energies of 1 and 3 particles in m12 rest frame. 
-  fptype e1star = 0.5 * (m12 - dm2*dm2 + dm1*dm1) / SQRT(m12); 
-  fptype e3star = 0.5 * (bigM*bigM - m12 - dm3*dm3) / SQRT(m12); 
+  //fptype e1star = 0.5 * (m12 - dm2*dm2 + dm1*dm1) / SQRT(m12); 
+  fptype e1star = 0.5 * (m12 - dm22 + dm11) / SQRT(m12); 
+  fptype e1star1 = e1star*e1star;
+  //fptype e3star = 0.5 * (bigM*bigM - m12 - dm3*dm3) / SQRT(m12); 
+  fptype e3star = 0.5 * (bigM*bigM - m12 - dm33) / SQRT(m12); 
+  fptype e3star3 = e3star*e3star;
+
+  fptype rte1mdm11 = SQRT(e1star1 - dm11);
+  fptype rte3mdm33 = SQRT(e3star3 - dm33);
 
   // Bounds for m13 at this value of m12.
-  fptype minimum = POW(e1star + e3star, 2) - POW(SQRT(e1star*e1star - dm1*dm1) + SQRT(e3star*e3star - dm3*dm3), 2);
-  if (m13 < minimum) return false;
-  fptype maximum = POW(e1star + e3star, 2) - POW(SQRT(e1star*e1star - dm1*dm1) - SQRT(e3star*e3star - dm3*dm3), 2);
-  if (m13 > maximum) return false;
+  //fptype minimum = (e1star + e3star)*(e1star + e3star) - POW(SQRT(e1star1 - dm11) + SQRT(e3star*e3star - dm33), 2);
+  fptype minimum = (e1star + e3star)*(e1star + e3star) - (rte1mdm11 + rte3mdm33)*(rte1mdm11 + rte3mdm33);
 
-  return true; 
+  bool m13less = (m13 < minimum) ? false : true;
+  //if (m13 < minimum) return false;
+
+  //fptype maximum = POW(e1star + e3star, 2) - POW(SQRT(e1star*e1star - dm1*dm1) - SQRT(e3star*e3star - dm3*dm3), 2);
+  fptype maximum = (e1star + e3star)*(e1star + e3star) - (rte1mdm11 - rte3mdm33)*(rte1mdm11 - rte3mdm33);
+  bool m13grea = (m13 > maximum) ? false : true;
+  //if (m13 > maximum) return false;
+
+  return m12less && m12grea && m13less && m13grea; 
 }
 
-EXEC_TARGET inline int parIndexFromResIndex (int resIndex) {
+EXEC_TARGET inline int parIndexFromResIndex (const int &resIndex) {
   return resonanceOffset + resIndex*resonanceSize; 
 }
 
-EXEC_TARGET devcomplex<fptype> getResonanceAmplitude (fptype m12, fptype m13, fptype m23, 
-						     unsigned int functionIdx, unsigned int pIndex) {
+EXEC_TARGET devcomplex<fptype> getResonanceAmplitude (const fptype &m12, const fptype &m13, const fptype &m23, 
+						     const unsigned int &functionIdx, const unsigned int &pIndex) {
   resonance_function_ptr func = reinterpret_cast<resonance_function_ptr>(device_function_table[functionIdx]);
   return (*func)(m12, m13, m23, paramIndices + pIndex); 
 }
@@ -104,6 +126,7 @@ EXEC_TARGET fptype device_Tddp (fptype* evt, fptype* p, unsigned int* indices) {
   unsigned int numResonances = indices[6]; 
   unsigned int cacheToUse    = indices[7]; 
 
+#pragma unroll
   for (int i = 0; i < numResonances; ++i) {
     int paramIndex  = parIndexFromResIndex(i);
     fptype amp_real = p[indices[paramIndex+0]];

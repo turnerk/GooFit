@@ -3,23 +3,23 @@
 EXEC_TARGET fptype twoBodyCMmom (const double &rMassSq, const fptype &d1m, const fptype &d2m) {
   // For A -> B + C, calculate momentum of B and C in rest frame of A. 
   // PDG 38.16.
-  fptype irMassSq = 1.0/rMassSq;
   fptype dpd = d1m + d2m;
   fptype dmd = d1m - d2m;
-  fptype sqrtMassSq = SQRT(rMassSq);
+  fptype irms = 1.0/rMassSq;
+  fptype sq = SQRT(rMassSq);
+  fptype dpd2 = dpd*dpd;
+  fptype dmd2 = dmd*dmd;
 
-  fptype kin1 = 1 - dpd*dpd*irMassSq;
-  fptype kin2 = 1 - dmd*dmd*irMassSq;
-
+  fptype kin1 = 1 - dpd2 * irms;
+  fptype kin2 = 1 - dmd2 * irms;
   fptype sqkin1 = SQRT(kin1);
   fptype sqkin2 = SQRT(kin2);
 
-  kin1 = (kin1 >= 0) ? sqkin1 : 1.0;
-  kin2 = (kin2 >= 0) ? sqkin2 : 1.0;
+  kin1 = (kin1 >= 0.0) ? sqkin1 : 1.0;
+  kin2 = (kin2 >= 0.0) ? sqkin2 : 1.0;
 
-  return 0.5*sqrtMassSq*kin1*kin2; 
+  return 0.5*sq*kin1*kin2;
 }
-
 
 EXEC_TARGET fptype dampingFactorSquare (const fptype &cmmom, const int &spin, const fptype &mRadius)
 {
@@ -33,7 +33,7 @@ EXEC_TARGET fptype dampingFactorSquare (const fptype &cmmom, const int &spin, co
   return (spin == 2) ? dfsqres : dfsq;
 }
 
-EXEC_TARGET fptype spinFactor (unsigned int spin, fptype motherMass, fptype daug1Mass, fptype daug2Mass, fptype daug3Mass, fptype m12, fptype m13, fptype m23, unsigned int cyclic_index) {
+EXEC_TARGET fptype spinFactor (const unsigned int &spin, const fptype &motherMass, const fptype &daug1Mass, const fptype &daug2Mass, const fptype &daug3Mass, const fptype &m12, const fptype &m13, const fptype &m23, const unsigned int &cyclic_index) {
   if (0 == spin) return 1; // Should not cause branching since every thread evaluates the same resonance at the same time. 
   /*
   // Copied from BdkDMixDalitzAmp
@@ -67,18 +67,40 @@ EXEC_TARGET fptype spinFactor (unsigned int spin, fptype motherMass, fptype daug
 
   fptype massFactor = 1.0/_mAB;
   fptype sFactor = -1; 
+  
+  //fptype motherMass2 = motherMass*motherMass;
+  //fptype _ma2 = _mA*_mA;
+  //fptype _mb2 = _mB*_mB;
+  //fptype _mc2 = _mC*_mC;
+
   sFactor *= ((_mBC - _mAC) + (massFactor*(motherMass*motherMass - _mC*_mC)*(_mA*_mA-_mB*_mB)));
+  //sFactor *= ((_mBC - _mAC) + (massFactor*(motherMass2 - _mc2)*(_ma2-_mb2)));
+
+  //fptype mm2mmc2 = motherMass2 - _mc2;
+  //fptype ma2mmb2 = _ma2 - _mb2;
+  //fptype div3 = 1.0/3.0;
+
   if (2 == spin) {
     sFactor *= sFactor; 
     fptype extraterm = ((_mAB-(2*motherMass*motherMass)-(2*_mC*_mC))+massFactor*pow((motherMass*motherMass-_mC*_mC),2));
+    //fptype extraterm = ((_mAB-(2*motherMass2)-(2*_mc2))+massFactor*mm2mmc2*mm2mmc2);
     extraterm *= ((_mAB-(2*_mA*_mA)-(2*_mB*_mB))+massFactor*pow((_mA*_mA-_mB*_mB),2));
+    //extraterm *= ((_mAB-(2*_ma2)-(2*_mb2))+massFactor*ma2mmb2*ma2mmb2);
     extraterm /= 3;
+    //extraterm *= div3;
     sFactor -= extraterm;
   }
   return sFactor; 
 }
 
 EXEC_TARGET devcomplex<fptype> plainBW (fptype m12, fptype m13, fptype m23, unsigned int* indices) {
+  //int idx[6];
+  //idx[1] = indices[1];
+  //idx[2] = indices[2];
+  //idx[3] = indices[3];
+  //idx[4] = indices[4];
+  //idx[5] = indices[5];
+
   fptype motherMass             = functorConstants[indices[1]+0];
   fptype daug1Mass              = functorConstants[indices[1]+1];
   fptype daug2Mass              = functorConstants[indices[1]+2];
@@ -187,6 +209,14 @@ EXEC_TARGET fptype fsFun (double s, double m2, double gam, double daug2Mass, dou
 }
 
 EXEC_TARGET devcomplex<fptype> gouSak (fptype m12, fptype m13, fptype m23, unsigned int* indices) {
+  //int idx[6];
+  //idx[0] = indices[0];
+  //idx[1] = indices[1];
+  //idx[2] = indices[2];
+  //idx[3] = indices[3];
+  //idx[4] = indices[4];
+  //idx[5] = indices[5];
+
   fptype motherMass             = functorConstants[indices[1]+0];
   fptype daug1Mass              = functorConstants[indices[1]+1];
   fptype daug2Mass              = functorConstants[indices[1]+2];
@@ -227,6 +257,14 @@ EXEC_TARGET devcomplex<fptype> gouSak (fptype m12, fptype m13, fptype m23, unsig
 
 
 EXEC_TARGET devcomplex<fptype> lass (fptype m12, fptype m13, fptype m23, unsigned int* indices) {
+  //int idx[6];
+  //idx[0] = indices[0];
+  //idx[1] = indices[1];
+  //idx[2] = indices[2];
+  //idx[3] = indices[3];
+  //idx[4] = indices[4];
+  //idx[5] = indices[5];
+
   fptype motherMass             = functorConstants[indices[1]+0];
   fptype daug1Mass              = functorConstants[indices[1]+1];
   fptype daug2Mass              = functorConstants[indices[1]+2];

@@ -71,6 +71,10 @@ void getToyData (std::string toyFileName) {
   vars.push_back(eventNumber); 
   data = new UnbinnedDataSet(vars); 
 
+  //adding this so we can read a whole line a at a time
+  int len = 2048;
+  char tmp[len];
+
   std::ifstream reader;
   reader.open(toyFileName.c_str()); 
   std::string buffer;
@@ -82,6 +86,9 @@ void getToyData (std::string toyFileName) {
 
   double dummy = 0; 
   while (!reader.eof()) {
+    //read the whole line at once
+    reader.getline(tmp, len, '\n');
+    /*
     reader >> dummy;
     reader >> dummy;      // m23, m(pi+ pi-), called m12 in processToyRoot convention. 
     reader >> m12->value; // Already swapped according to D* charge. m12 = m(pi+pi0)
@@ -106,6 +113,7 @@ void getToyData (std::string toyFileName) {
     reader >> dummy; 
     reader >> dummy; 
     reader >> dummy; 
+    */
 
     // EXERCISE 1 (preliminary): Impose an artificial reconstruction efficiency
     // by throwing out events with a probability linear in m12. 
@@ -119,6 +127,11 @@ void getToyData (std::string toyFileName) {
     //eventNumber->value = data->getNumEvents(); 
     //data->addEvent(); 
 
+     //sscanf the buffer, 20 elements
+     //sscanf (tmp, "%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf", &dummy, &dummy, &m12->value, &m13->value, &dummy, &dummy,
+     //	&dummy, &dummy, &dummy, &dummy, &dummy, &dummy, &dummy, &dummy, &dummy, &dummy, &dummy, &dummy, &dummy, &dummy);
+     sscanf (tmp, "%lf %lf %lf %lf", &dummy, &dummy, &m12->value, &m13->value);
+
     std::vector <fptype> list;
     list.push_back (m12->value);
     list.push_back (m13->value);
@@ -130,6 +143,7 @@ void getToyData (std::string toyFileName) {
 
   dalitzplot.SetStats(false); 
   dalitzplot.Draw("colz");
+  //this takes forever?!?!
   foodal->SaveAs("dalitzplot.png"); 
 }
 
