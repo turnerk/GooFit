@@ -17,7 +17,7 @@ EXEC_TARGET inline int parIndexFromResIndex_DP (const int &resIndex) {
   return resonanceOffset_DP + resIndex*resonanceSize; 
 }
 
-EXEC_TARGET devcomplex<fptype> device_DalitzPlot_calcIntegrals (const fptype &m12, const fptype &m13, const int &res_i, const int &res_j, fptype* __restrict__ p, unsigned int* __restrict__ indices) {
+EXEC_TARGET devcomplex<fptype> device_DalitzPlot_calcIntegrals (const fptype &m12, const fptype &m13, const int &res_i, const int &res_j, fptype* p, unsigned int* indices) {
   int idx[2];
   idx[1] = indices[1];
 
@@ -30,10 +30,10 @@ EXEC_TARGET devcomplex<fptype> device_DalitzPlot_calcIntegrals (const fptype &m1
   // observed points, that's why it doesn't use 
   // cResonances. No need to cache the values at individual
   // grid points - we only care about totals. 
-  fptype motherMass = functorConstants[idx[1] + 0]; 
-  fptype daug1Mass  = functorConstants[idx[1] + 1]; 
-  fptype daug2Mass  = functorConstants[idx[1] + 2]; 
-  fptype daug3Mass  = functorConstants[idx[1] + 3];  
+  fptype motherMass = functorConstants[idx[1] + 0];
+  fptype daug1Mass  = functorConstants[idx[1] + 1];
+  fptype daug2Mass  = functorConstants[idx[1] + 2];
+  fptype daug3Mass  = functorConstants[idx[1] + 3];
 
   devcomplex<fptype> ret; 
   if (!inDalitz(m12, m13, motherMass, daug1Mass, daug2Mass, daug3Mass)) return ret;
@@ -59,7 +59,7 @@ EXEC_TARGET fptype device_DalitzPlot (fptype* evt, fptype* p, unsigned int* indi
   idx[2] = indices[2];
   idx[3] = indices[3];
 
-  fptype motherMass = functorConstants[idx[1] + 0]; 
+  fptype motherMass = functorConstants[idx[1] + 0];
   fptype daug1Mass  = functorConstants[idx[1] + 1]; 
   fptype daug2Mass  = functorConstants[idx[1] + 2]; 
   fptype daug3Mass  = functorConstants[idx[1] + 3]; 

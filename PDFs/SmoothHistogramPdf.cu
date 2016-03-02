@@ -4,7 +4,7 @@ MEM_CONSTANT fptype* dev_base_histograms[100]; // Multiple histograms for the ca
 MEM_CONSTANT fptype* dev_smoothed_histograms[100]; 
 unsigned int SmoothHistogramPdf::totalHistograms = 0; 
 
-EXEC_TARGET int dev_powi (int base, int exp) {
+EXEC_TARGET int dev_powi (const int &base, const int &exp) {
   int ret = 1; 
   for (int i = 0; i < exp; ++i) ret *= base;
   return ret; 
@@ -14,19 +14,23 @@ EXEC_TARGET fptype device_EvalHistogram (fptype* evt, fptype* p, unsigned int* i
   // Structure is
   // nP smoothingIndex totalHistograms (limit1 step1 bins1) (limit2 step2 bins2) nO o1 o2
   // where limit and step are indices into functorConstants. 
+  int idx[3];
+  idx[0] = indices[0];
+  idx[2] = indices[2];
 
-  int numVars = indices[indices[0] + 1]; 
+  int numVars = indices[idx[0] + 1]; 
   int globalBinNumber = 0; 
   int previous = 1; 
-  int myHistogramIndex = indices[2]; // 1 only used for smoothing
+  int myHistogramIndex = idx[2]; // 1 only used for smoothing
 
   for (int i = 0; i < numVars; ++i) { 
-    int varIndex = indices[indices[0] + 2 + i]; 
+    int varIndex = indices[idx[0] + 2 + i]; 
     int lowerBoundIdx   = 3*(i+1);
     //if (gpuDebug & 1) printf("[%i, %i] Smoothed: %i %i %i\n", BLOCKIDX, THREADIDX, i, varIndex, indices[varIndex]); 
     fptype currVariable = evt[varIndex];
     fptype lowerBound   = functorConstants[indices[lowerBoundIdx + 0]];
     fptype step         = functorConstants[indices[lowerBoundIdx + 1]];
+    fptype pprev        = indices[lowerBoundIdx + 2];
 
     currVariable -= lowerBound;
     currVariable /= step; 
@@ -34,7 +38,7 @@ EXEC_TARGET fptype device_EvalHistogram (fptype* evt, fptype* p, unsigned int* i
 
     int localBinNumber  = (int) FLOOR(currVariable); 
     globalBinNumber    += previous * localBinNumber; 
-    previous           *= indices[lowerBoundIdx + 2];
+    previous           *= pprev;
   }
 
   fptype* myHistogram = dev_smoothed_histograms[myHistogramIndex];
@@ -59,7 +63,7 @@ struct Smoother {
 
     fptype otherBinsTotal = 0; 
     int numSurroundingBins = 0; 
-    int otherBins = dev_powi(3, numVars); 
+    int otherBins = dev_powi(3, numVars);
     for (int i = 0; i < otherBins; ++i) {
       int currBin = globalBin; 
       int localPrevious = 1; 

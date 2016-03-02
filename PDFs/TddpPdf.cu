@@ -15,14 +15,18 @@ const unsigned int SPECIAL_RESOLUTION_FLAG = 999999999;
 // own cache, hence the '10'. Ten threads should be enough for anyone! 
 MEM_DEVICE WaveHolder* cWaves[10]; 
 
-EXEC_TARGET bool inDalitz (const fptype &m12, const fptype &m13, const fptype &bigM, const fptype &dm1, const fptype &dm2, const fptype &dm3) {
+EXEC_TARGET inline bool inDalitz (const fptype &m12, const fptype &m13, const fptype &bigM, const fptype &dm1, const fptype &dm2, const fptype &dm3) {
   fptype dm1pdm2 = dm1 + dm2;
   fptype bigMmdm3 = bigM - dm3;
+  fptype sqrtm12 = SQRT(m12);
+  fptype bigM2 = bigM*bigM;
  
   bool m12less = (m12 < dm1pdm2*dm1pdm2) ? false : true; 
   //if (m12 < dm1pdm2*dm1pdm2) return false; // This m12 cannot exist, it's less than the square of the (1,2) particle mass.
   bool m12grea = (m12 > bigMmdm3*bigMmdm3) ? false : true;
   //if (m12 > bigMmdm3*bigMmdm3) return false;   // This doesn't work either, there's no room for an at-rest 3 daughter. 
+
+  fptype invsqrtm12 = 1.0/sqrtm12;
 
   fptype dm11 = dm1*dm1; 
   fptype dm22 = dm2*dm2;
@@ -30,24 +34,27 @@ EXEC_TARGET bool inDalitz (const fptype &m12, const fptype &m13, const fptype &b
  
   // Calculate energies of 1 and 3 particles in m12 rest frame. 
   //fptype e1star = 0.5 * (m12 - dm2*dm2 + dm1*dm1) / SQRT(m12); 
-  fptype e1star = 0.5 * (m12 - dm22 + dm11) / SQRT(m12); 
+  fptype e1star = 0.5 * (m12 - dm22 + dm11) * invsqrtm12; 
   fptype e1star1 = e1star*e1star;
   //fptype e3star = 0.5 * (bigM*bigM - m12 - dm3*dm3) / SQRT(m12); 
-  fptype e3star = 0.5 * (bigM*bigM - m12 - dm33) / SQRT(m12); 
+  fptype e3star = 0.5 * (bigM2 - m12 - dm33) * invsqrtm12; 
   fptype e3star3 = e3star*e3star;
 
   fptype rte1mdm11 = SQRT(e1star1 - dm11);
   fptype rte3mdm33 = SQRT(e3star3 - dm33);
+  fptype e1pe3 = e1star + e3star;
+
+  fptype rte1prte3 = rte1mdm11 + rte3mdm33;
+  fptype rte1mrte3 = rte1mdm11 - rte3mdm33;
 
   // Bounds for m13 at this value of m12.
   //fptype minimum = (e1star + e3star)*(e1star + e3star) - POW(SQRT(e1star1 - dm11) + SQRT(e3star*e3star - dm33), 2);
-  fptype minimum = (e1star + e3star)*(e1star + e3star) - (rte1mdm11 + rte3mdm33)*(rte1mdm11 + rte3mdm33);
-
+  fptype minimum = e1pe3*e1pe3 - rte1prte3*rte1prte3;
   bool m13less = (m13 < minimum) ? false : true;
   //if (m13 < minimum) return false;
 
   //fptype maximum = POW(e1star + e3star, 2) - POW(SQRT(e1star*e1star - dm1*dm1) - SQRT(e3star*e3star - dm3*dm3), 2);
-  fptype maximum = (e1star + e3star)*(e1star + e3star) - (rte1mdm11 - rte3mdm33)*(rte1mdm11 - rte3mdm33);
+  fptype maximum = e1pe3*e1pe3 - rte1mrte3*rte1mrte3;
   bool m13grea = (m13 > maximum) ? false : true;
   //if (m13 > maximum) return false;
 
@@ -76,11 +83,14 @@ EXEC_TARGET ThreeComplex device_Tddp_calcIntegrals (fptype m12, fptype m13, int 
   // observed points, that's why it doesn't use 
   // cWaves. No need to cache the values at individual
   // grid points - we only care about totals. 
+  int idx[2];
+  //idx[0] = indices[0];
+  idx[1] = indices[1];
 
-  fptype motherMass = functorConstants[indices[1] + 0]; 
-  fptype daug1Mass  = functorConstants[indices[1] + 1]; 
-  fptype daug2Mass  = functorConstants[indices[1] + 2]; 
-  fptype daug3Mass  = functorConstants[indices[1] + 3];  
+  fptype motherMass = functorConstants[idx[1] + 0]; 
+  fptype daug1Mass  = functorConstants[idx[1] + 1]; 
+  fptype daug2Mass  = functorConstants[idx[1] + 2]; 
+  fptype daug3Mass  = functorConstants[idx[1] + 3];  
 
   ThreeComplex ret; 
   if (!inDalitz(m12, m13, motherMass, daug1Mass, daug2Mass, daug3Mass)) return ret;
@@ -106,16 +116,26 @@ EXEC_TARGET ThreeComplex device_Tddp_calcIntegrals (fptype m12, fptype m13, int 
 }
 
 EXEC_TARGET fptype device_Tddp (fptype* evt, fptype* p, unsigned int* indices) {
-  fptype motherMass = functorConstants[indices[1] + 0]; 
-  fptype daug1Mass  = functorConstants[indices[1] + 1]; 
-  fptype daug2Mass  = functorConstants[indices[1] + 2]; 
-  fptype daug3Mass  = functorConstants[indices[1] + 3]; 
+  int idx[8];
+  idx[0] = indices[0];
+  idx[1] = indices[1];
+  idx[2] = indices[2];
+  idx[3] = indices[3];
+  idx[4] = indices[4];
+  idx[5] = indices[5];
+  idx[6] = indices[6];
+  idx[7] = indices[7];
+  
+  fptype motherMass = functorConstants[idx[1] + 0]; 
+  fptype daug1Mass  = functorConstants[idx[1] + 1]; 
+  fptype daug2Mass  = functorConstants[idx[1] + 2]; 
+  fptype daug3Mass  = functorConstants[idx[1] + 3]; 
 
-  fptype m12 = evt[indices[4 + indices[0]]]; 
-  fptype m13 = evt[indices[5 + indices[0]]];
+  fptype m12 = evt[indices[4 + idx[0]]]; 
+  fptype m13 = evt[indices[5 + idx[0]]];
 
   if (!inDalitz(m12, m13, motherMass, daug1Mass, daug2Mass, daug3Mass)) return 0; 
-  int evtNum = (int) FLOOR(0.5 + evt[indices[6 + indices[0]]]); 
+  int evtNum = (int) FLOOR(0.5 + evt[indices[6 + idx[0]]]); 
 
   devcomplex<fptype> sumWavesA(0, 0);
   devcomplex<fptype> sumWavesB(0, 0); 
@@ -123,65 +143,34 @@ EXEC_TARGET fptype device_Tddp (fptype* evt, fptype* p, unsigned int* indices) {
   devcomplex<fptype> sumRateAB(0, 0); 
   devcomplex<fptype> sumRateBB(0, 0); 
 
-  unsigned int numResonances = indices[6]; 
-  unsigned int cacheToUse    = indices[7]; 
+  unsigned int numResonances = idx[6]; 
+  unsigned int cacheToUse    = idx[7]; 
 
-#pragma unroll
+  int enr = evtNum*numResonances;
+
+//#pragma unroll
   for (int i = 0; i < numResonances; ++i) {
     int paramIndex  = parIndexFromResIndex(i);
     fptype amp_real = p[indices[paramIndex+0]];
     fptype amp_imag = p[indices[paramIndex+1]];
 
-    devcomplex<fptype> matrixelement(thrust::get<0>(cWaves[cacheToUse][evtNum*numResonances + i]),
-                                    thrust::get<1>(cWaves[cacheToUse][evtNum*numResonances + i]));
+    devcomplex<fptype> matrixelement(thrust::get<0>(cWaves[cacheToUse][enr + i]),
+                                     thrust::get<1>(cWaves[cacheToUse][enr + i]));
     matrixelement.multiply(amp_real, amp_imag); 
     sumWavesA += matrixelement; 
 
-#ifdef DEBUGSUMRATES
-    if (25 > evtNum) {
-      devcomplex<fptype> waveA_i(thrust::get<0>(cWaves[cacheToUse][evtNum*numResonances + i]),
-				 thrust::get<1>(cWaves[cacheToUse][evtNum*numResonances + i])); 
-      devcomplex<fptype> waveB_i(thrust::get<2>(cWaves[cacheToUse][evtNum*numResonances + i]),
-				 thrust::get<3>(cWaves[cacheToUse][evtNum*numResonances + i])); 
-
-      for (int j = 0; j < numResonances; ++j) {
-	int paramIndex_j  = parIndexFromResIndex(j);
-	fptype amp_real_j = p[indices[paramIndex_j+0]];
-	fptype amp_imag_j = p[indices[paramIndex_j+1]];
-
-	devcomplex<fptype> waveA_j(thrust::get<0>(cWaves[cacheToUse][evtNum*numResonances + j]),
-				   thrust::get<1>(cWaves[cacheToUse][evtNum*numResonances + j])); 
-
-	devcomplex<fptype> waveB_j(thrust::get<2>(cWaves[cacheToUse][evtNum*numResonances + j]),
-				   thrust::get<3>(cWaves[cacheToUse][evtNum*numResonances + j])); 
-	devcomplex<fptype> amps(amp_real, -amp_imag);
-	amps.multiply(amp_real_j, amp_imag_j); 
-
-	devcomplex<fptype> rateAA = conj(waveA_i)*waveA_j*amps;
-	devcomplex<fptype> rateAB = conj(waveA_i)*waveB_j*amps;
-	devcomplex<fptype> rateBB = conj(waveB_i)*waveB_j*amps;
-	
-	sumRateAA += rateAA;
-	sumRateAB += rateAB;
-	sumRateBB += rateBB;
-      }
-      waveA_i.multiply(amp_real, amp_imag);
-      waveB_i.multiply(amp_real, amp_imag);
-    }
-#endif
-
-    matrixelement = devcomplex<fptype>(thrust::get<2>(cWaves[cacheToUse][evtNum*numResonances + i]),
-				       thrust::get<3>(cWaves[cacheToUse][evtNum*numResonances + i])); 
+    matrixelement = devcomplex<fptype>(thrust::get<2>(cWaves[cacheToUse][enr + i]),
+				       thrust::get<3>(cWaves[cacheToUse][enr + i])); 
     matrixelement.multiply(amp_real, amp_imag); 
     sumWavesB += matrixelement; 
   } 
 
-  fptype _tau     = p[indices[2]];
-  fptype _xmixing = p[indices[3]];
-  fptype _ymixing = p[indices[4]];
+  fptype _tau     = p[idx[2]];
+  fptype _xmixing = p[idx[3]];
+  fptype _ymixing = p[idx[4]];
   
-  fptype _time    = evt[indices[2 + indices[0]]];
-  fptype _sigma   = evt[indices[3 + indices[0]]];
+  fptype _time    = evt[indices[2 + idx[0]]];
+  fptype _sigma   = evt[indices[3 + idx[0]]];
 
   //if ((gpuDebug & 1) && (0 == BLOCKIDX) && (0 == THREADIDX)) 
   //if (0 == evtNum) printf("TDDP: (%f, %f) (%f, %f)\n", sumWavesA.real, sumWavesA.imag, sumWavesB.real, sumWavesB.imag);
@@ -205,7 +194,7 @@ EXEC_TARGET fptype device_Tddp (fptype* evt, fptype* p, unsigned int* indices) {
 
   // Cannot use callFunction on resolution function. 
   int effFunctionIdx = parIndexFromResIndex(numResonances); 
-  int resFunctionIdx = indices[5]; 
+  int resFunctionIdx = idx[5]; 
   int resFunctionPar = 2 + effFunctionIdx; 
   fptype ret = 0; 
   int md0_offset = 0; 
@@ -213,12 +202,13 @@ EXEC_TARGET fptype device_Tddp (fptype* evt, fptype* p, unsigned int* indices) {
     // In this case there are multiple resolution functions, they are stored after the efficiency function,
     // and which one we use depends on the measured mother-particle mass. 
     md0_offset = 1; 
-    fptype massd0 = evt[indices[7 + indices[0]]]; 
-    fptype minMass = functorConstants[indices[1] + 6];
-    fptype md0Step = functorConstants[indices[1] + 7];
+    fptype massd0 = evt[indices[7 + idx[0]]]; 
+    fptype minMass = functorConstants[idx[1] + 6];
+    fptype md0Step = functorConstants[idx[1] + 7];
     int res_to_use = (massd0 <= minMass) ? 0 : (int) FLOOR((massd0 - minMass) / md0Step); 
     int maxFcn     = indices[2+effFunctionIdx]; 
-    if (res_to_use > maxFcn) res_to_use = maxFcn; 
+    //if (res_to_use > maxFcn) res_to_use = maxFcn; 
+    res_to_use = (res_to_use > maxFcn) ? maxFcn : res_to_use;
 
     // Now calculate index of resolution function.
     // At the end of the array are indices efficiency_function, efficiency_parameters, maxFcn, res_function_1, res_function_1_nP, par1, par2 ... res_function_2, res_function_2_nP, ... 
@@ -245,11 +235,11 @@ EXEC_TARGET fptype device_Tddp (fptype* evt, fptype* p, unsigned int* indices) {
   // because it depends on the momenta of the pi+ and pi-,
   // which don't change even though we tagged a D0 as D0bar. 
   
-  fptype mistag = functorConstants[indices[1] + 5]; 
+  fptype mistag = functorConstants[idx[1] + 5]; 
   if (mistag > 0) { // This should be either true or false for all events, so no branch is caused.
     // See header file for explanation of 'mistag' variable - it is actually the probability
     // of having the correct sign, given that we have a correctly reconstructed D meson. 
-    mistag = evt[indices[md0_offset + 7 + indices[0]]]; 
+    mistag = evt[indices[md0_offset + 7 + idx[0]]]; 
     ret *= mistag; 
     ret += (1 - mistag) * (*(reinterpret_cast<device_resfunction_ptr>(device_function_table[resFunctionIdx])))(term1, -term2, sumWavesA.real, -sumWavesA.imag,
 													   _tau, _time, _xmixing, _ymixing, _sigma, 
@@ -776,13 +766,18 @@ EXEC_TARGET WaveHolder SpecialWaveCalculator::operator () (thrust::tuple<int, fp
   fptype* evt = thrust::get<1>(t) + (evtNum * thrust::get<2>(t)); 
 
   unsigned int* indices = paramIndices + parameters;   // Jump to TDDP position within parameters array
-  fptype m12 = evt[indices[4 + indices[0]]]; 
-  fptype m13 = evt[indices[5 + indices[0]]];
+  
+  int idx[2];
+  idx[0] = indices[0];
+  idx[1] = indices[1];
 
-  fptype motherMass = functorConstants[indices[1] + 0]; 
-  fptype daug1Mass  = functorConstants[indices[1] + 1]; 
-  fptype daug2Mass  = functorConstants[indices[1] + 2]; 
-  fptype daug3Mass  = functorConstants[indices[1] + 3];  
+  fptype m12 = evt[indices[4 + idx[0]]]; 
+  fptype m13 = evt[indices[5 + idx[0]]];
+
+  fptype motherMass = functorConstants[idx[1] + 0]; 
+  fptype daug1Mass  = functorConstants[idx[1] + 1]; 
+  fptype daug2Mass  = functorConstants[idx[1] + 2]; 
+  fptype daug3Mass  = functorConstants[idx[1] + 3];  
 
   if (!inDalitz(m12, m13, motherMass, daug1Mass, daug2Mass, daug3Mass)) return ret;
   fptype m23 = motherMass*motherMass + daug1Mass*daug1Mass + daug2Mass*daug2Mass + daug3Mass*daug3Mass - m12 - m13; 

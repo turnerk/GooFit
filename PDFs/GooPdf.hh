@@ -18,7 +18,7 @@
 
 #include "PdfBase.hh" 
 
-EXEC_TARGET int dev_powi (int base, int exp); // Implemented in SmoothHistogramPdf.
+EXEC_TARGET int dev_powi (const int &base, const int &exp); // Implemented in SmoothHistogramPdf.
 
 #define CALLS_TO_PRINT 10 
 typedef fptype (*device_function_ptr) (fptype*, fptype*, unsigned int*);            // Pass event, parameters, index into parameters. 

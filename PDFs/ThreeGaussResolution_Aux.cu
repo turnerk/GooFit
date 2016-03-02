@@ -4,7 +4,7 @@ const fptype R1o6      = 1.0 / 6.0;
 #define SQRTPIo2 (1.0/M_2_SQRTPI)
 #define SQRT1o2PI (SQRT(0.5*M_1_PI))
 
-EXEC_TARGET void gaussian (fptype& _P1, fptype& _P2, fptype& _P3, fptype& _P4,
+EXEC_TARGET inline void gaussian (fptype& _P1, fptype& _P2, fptype& _P3, fptype& _P4,
 			  fptype _tau, fptype adjTime, fptype xmixing, fptype ymixing, fptype adjSigma) {
 
   fptype _1oSqrtA  = adjSigma*M_SQRT2; 

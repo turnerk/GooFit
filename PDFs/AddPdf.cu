@@ -4,6 +4,7 @@ EXEC_TARGET fptype device_AddPdfs (fptype* evt, fptype* p, unsigned int* indices
   int numParameters = indices[0]; 
   fptype ret = 0;
   fptype totalWeight = 0; 
+#pragma unroll
   for (int i = 1; i < numParameters-3; i += 3) {
     totalWeight += p[indices[i+2]];
     fptype curr = callFunction(evt, indices[i], indices[i+1]); 
@@ -39,11 +40,16 @@ EXEC_TARGET fptype device_AddPdfsExt (fptype* evt, fptype* p, unsigned int* indi
   int numParameters = indices[0]; 
   fptype ret = 0;
   fptype totalWeight = 0; 
+#pragma unroll
   for (int i = 1; i < numParameters; i += 3) {    
+    int idx[3];
+    idx[0] = indices[i];
+    idx[1] = indices[i + 1];
+    idx[2] = indices[i + 2];
     //fptype curr = (*(reinterpret_cast<device_function_ptr>(device_function_table[indices[i]])))(evt, p, paramIndices + indices[i+1]);
-    fptype curr = callFunction(evt, indices[i], indices[i+1]); 
-    fptype weight = p[indices[i+2]];
-    ret += weight * curr * normalisationFactors[indices[i+1]]; 
+    fptype curr = callFunction(evt, idx[0], idx[1]); 
+    fptype weight = p[idx[2]];
+    ret += weight * curr * normalisationFactors[idx[1]]; 
 
     totalWeight += weight; 
     //if ((gpuDebug & 1) && (THREADIDX == 0) && (0 == BLOCKIDX)) 

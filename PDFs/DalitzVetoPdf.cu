@@ -2,23 +2,42 @@
 #include "DalitzPlotHelpers.hh" 
 
 EXEC_TARGET fptype device_DalitzVeto (fptype* evt, fptype* p, unsigned int* indices) {
-  fptype x         = evt[indices[2 + indices[0] + 0]]; 
-  fptype y         = evt[indices[2 + indices[0] + 1]]; 
+  int idx[6];
+  idx[0] = indices[0];
+  idx[1] = indices[1];
+  idx[2] = indices[2];
+  idx[3] = indices[3];
+  idx[4] = indices[4];
+  idx[5] = indices[5];
 
-  fptype motherM   = p[indices[1]];
-  fptype d1m       = p[indices[2]];
-  fptype d2m       = p[indices[3]];
-  fptype d3m       = p[indices[4]];
+  fptype x         = evt[indices[2 + idx[0] + 0]]; 
+  fptype y         = evt[indices[2 + idx[0] + 1]]; 
 
-  fptype massSum   = motherM*motherM + d1m*d1m + d2m*d2m + d3m*d3m;
-  fptype z         = massSum - x - y;
+  fptype motherM   = p[idx[1]];
+  fptype d1m       = p[idx[2]];
+  fptype d2m       = p[idx[3]];
+  fptype d3m       = p[idx[4]];
+
+  fptype motherM2  = motherM*motherM;
+  fptype d1m2      = d1m*d1m;
+  fptype d2m2      = d2m*d2m;
+  fptype d3m2      = d3m*d3m;
+
+  fptype massSum   = motherM2 + d1m2 + d2m2 + d3m2;
 
   fptype ret = inDalitz(x, y, motherM, d1m, d2m, d3m) ? 1.0 : 0.0; 
-  unsigned int numVetos = indices[5];
+  unsigned int numVetos = idx[5];
+
+  fptype z         = massSum - x - y;
+
+  //unroll?
+#pragma unroll
   for (int i = 0; i < numVetos; ++i) {
-    unsigned int varIndex =   indices[6 + i*3 + 0];
-    fptype minimum        = p[indices[6 + i*3 + 1]];
-    fptype maximum        = p[indices[6 + i*3 + 2]];
+    int i3 = i*3;
+
+    unsigned int varIndex =   indices[6 + i3 + 0];
+    fptype minimum        = p[indices[6 + i3 + 1]];
+    fptype maximum        = p[indices[6 + i3 + 2]];
     fptype currDalitzVar = (PAIR_12 == varIndex ? x : PAIR_13 == varIndex ? y : z);
 
     ret *= ((currDalitzVar < maximum) && (currDalitzVar > minimum)) ? 0.0 : 1.0;
