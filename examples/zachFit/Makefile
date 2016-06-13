@@ -28,4 +28,4 @@ zach:		ZachFit.o $(THRUSTO) $(ROOTUTILLIB)
 		@echo "$@ done"
 
 clean:
-		@rm -f *.o core mixfit 
+		@rm -f *.o core zach zach_mchist.png 
