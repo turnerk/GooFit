@@ -337,7 +337,7 @@ void getToyData (float sigweight = 0.9) {
     std::cout << buffer; 
   }
 
-  TRandom3 donram(12); 
+  TRandom3 donram(0); 
 
   int nsig = 0;
   double sigprob = 0;
@@ -854,171 +854,15 @@ void runToyFit (int ifile, int nfile, bool noPlots = true) {
   
   gettimeofday(&startTime, NULL);
   startCPU = times(&startProc);
-  datapdf.fit();
-
+  datapdf.fit(); 
   stopCPU = times(&stopProc);
   gettimeofday(&stopTime, NULL);
 
   datapdf.getMinuitValues();
-  //printf("Fit results:\ntau    : (%.3f $\\pm$ %.3f) fs\nxmixing: (%.3f $\\pm$ %.3f)%\nymixing: (%.3f $\\pm$ %.3f)%\n",
-          //1000*ptr_to_dtau->value, 1000*ptr_to_dtau->error,
- 	  //100*ptr_to_xmix->value, 100*ptr_to_xmix->error,
-	  //100*ptr_to_ymix->value, 100*ptr_to_ymix->error);
- 
-  std::vector<Variable*> modParams;
-  signalDalitz->getParameters(modParams);
-  std::vector<double> expected;
-
-  expected.push_back(4.10100e-01);
-  expected.push_back(1.60000e-03);
-  expected.push_back(5.50000e-03);
-  expected.push_back(-5.59500e-01);
-  expected.push_back(1.08761e-01);
-  expected.push_back(1);
-  expected.push_back(0);
-  expected.push_back(5.65000e-01);
-  expected.push_back(1.64000e-01);
-  expected.push_back(7.14000e-01);
-  expected.push_back(-2.50000e-02);;
-  expected.push_back(-1.74000e-01);
-  expected.push_back(-1.17000e-01);
-  expected.push_back(3.25000e-01);
-  expected.push_back(5.70000e-02);
-  expected.push_back(7.88000e-01);
-  expected.push_back(2.26000e-01);
-  expected.push_back(2.15100);
-  expected.push_back(-6.58000e-01);
-  expected.push_back(2.40000);
-  expected.push_back(-7.34000e-01);
-  expected.push_back(1.28600);
-  expected.push_back(-1.53200);
-  expected.push_back(-2.78210e-02);
-  expected.push_back(4.52092e-02);
-  expected.push_back(2.01702e-01);
-  expected.push_back(-9.04183e-02);
-  expected.push_back(-1.98225e-01);
-  expected.push_back(-4.17315e-02);
-  expected.push_back(-2.43434e-01);
-  expected.push_back(-3.02554e-01);
-  expected.push_back(2.95316e-01);
-  expected.push_back(4.65835e-02);
-  expected.push_back(-2.36479e-01);
-  expected.push_back(-3.47763e-02);
-  expected.push_back(9.00000e-01);
-  expected.push_back(1);
-  expected.push_back(0);
-  expected.push_back(9.60000e-01);
-  expected.push_back(1.63000);
-  expected.push_back(0);
-  expected.push_back(7.75800e-01);
-  expected.push_back(1.50300e-01);
-  expected.push_back(1.46500);
-  expected.push_back(4.00000e-01);
-  expected.push_back(1.72000);
-  expected.push_back(2.50000e-01);
-  expected.push_back(9.80000e-01);
-  expected.push_back(4.40000e-02);
-  expected.push_back(1.43400);
-  expected.push_back(1.73000e-01);
-  expected.push_back(1.50700);
-  expected.push_back(1.09000e-01);
-  expected.push_back(1.71400);
-  expected.push_back(1.40000e-01);
-  expected.push_back(1.27540);
-  expected.push_back(1.85100e-01);
-  expected.push_back(5.00000e-01);
-  expected.push_back(4.00000e-01);
-  expected.push_back(3.01769e-01);
-  expected.push_back(1.86484);
-  expected.push_back(1.34977e-01);
-  expected.push_back(1.39570e-01);
-  expected.push_back(2.25625e-01);
-  expected.push_back(2.55025e-01);
-  expected.push_back(3.53481);
-  expected.push_back(-1);
-  expected.push_back(2.56160e-01);
-  expected.push_back(6.37917e-02);
-  expected.push_back(4.85778);
-  expected.push_back(2.03807e-01);
-  expected.push_back(4.47258e-02);
-  expected.push_back(6.03019);
-  expected.push_back(1.66355e-01);
-  expected.push_back(3.06288e-02);
-  expected.push_back(6.36114);
-  expected.push_back(1.33833e-01);
-  expected.push_back(2.14333e-02);
-  expected.push_back(6.64527);
-  expected.push_back(1.21110e-01);
-  expected.push_back(1.96227e-02);
-  expected.push_back(7.11866);
-  expected.push_back(1.11564e-01);
-  expected.push_back(1.72248e-02);
-  expected.push_back(8.05595);
-  expected.push_back(1.19049e+05);
-  expected.push_back(1.03648e+05);
-  expected.push_back(1.00000);
-  expected.push_back(1.00000);
-  expected.push_back(4.09821e-01);
-  expected.push_back(-3.45785e-01);
-  expected.push_back(5.88313e-01);
-  expected.push_back(2.74697);
-  expected.push_back(-1.13379e-01);
-  expected.push_back(2.51009e-01);
-  expected.push_back(6.35643);
-  expected.push_back(3.02247e-01);
-  expected.push_back(7.17737e-02);
-  expected.push_back(3.01731);
-  expected.push_back(2.38848e-01);
-  expected.push_back(5.20952e-02);
-  expected.push_back(4.19030);
-  expected.push_back(1.94058e-01);
-  expected.push_back(4.07836e-02);
-  expected.push_back(3.94312);
-  expected.push_back(1.70297e-01);
-  expected.push_back(3.85072e-02);
-  expected.push_back(4.03628);
-  expected.push_back(1.43394e-01);
-  expected.push_back(2.78155e-02);
-  expected.push_back(3.56000);
-  expected.push_back(1.57505e-01);
-  expected.push_back(3.71048e-02);
-  expected.push_back(5.25739);
-  expected.push_back(1);
-  expected.push_back(3.19825e-01);
-  expected.push_back(-6.84641e-02);
-  expected.push_back(6.12065e-01);
-  expected.push_back(2.32683);
-  expected.push_back(1.56762e-02);
-  expected.push_back(2.50457e-01);
-  expected.push_back(2.58840);
-  expected.push_back(1);
-  expected.push_back(2.32683);
-  expected.push_back(1.56762e-02);
-  expected.push_back(2.50457e-01);
-  expected.push_back(2.58840);
-  expected.push_back(1);
-  expected.push_back(3.79648e-01);
-  expected.push_back(-3.46368e-01);
-  expected.push_back(6.14250e-01);
-  expected.push_back(2.01064);
-  expected.push_back(-7.64787e-02);
-  expected.push_back(2.65981e-01);
-  expected.push_back(3.01728);  
-  
-  double variation;
-  int count = 0;
-  for (int i = 0; i < modParams.size(); i++) {
-    variation = fabs(expected[i] - modParams[i]->value);
-    if (variation < 0.001) {
-      std::cout << "\n" << modParams[i]->name << " value not in epsilon." << endl;
-      std::cout << "Expected: " << expected[i] << endl;
-      std::cout << "Actual: " << modParams[i]->value << endl;
-      std::cout << "Variation: " << variation << endl;
-      count++;
-    }
-  }
-
-  std::cout << "\nTotal variances: " << count << endl;
+  printf("Fit results:\ntau    : (%.3f $\\pm$ %.3f) fs\nxmixing: (%.3f $\\pm$ %.3f)%\nymixing: (%.3f $\\pm$ %.3f)%\n",
+          1000*ptr_to_dtau->value, 1000*ptr_to_dtau->error,
+	 100*ptr_to_xmix->value, 100*ptr_to_xmix->error,
+	 100*ptr_to_ymix->value, 100*ptr_to_ymix->error);
 
   if (noPlots) return; 
   makeToyDalitzPlots(mixPdf);   
@@ -3754,162 +3598,6 @@ void runCanonicalFit (char* fname, bool noPlots = true) {
 	 1000*ptr_to_dtau->value, 1000*ptr_to_dtau->error,
 	 100*ptr_to_xmix->value, 100*ptr_to_xmix->error,
 	 100*ptr_to_ymix->value, 100*ptr_to_ymix->error);
-  
-  std::vector<Variable*> modParams;
-  overallPdf->getParameters(modParams);
-  std::vector<double> expected;
-  expected.push_back(4.10100e-01);
-  expected.push_back(1.60000e-03);
-  expected.push_back(5.50000e-03);
-  expected.push_back(-5.59500e-01);
-  expected.push_back(1.08761e-01);
-  expected.push_back(1);
-  expected.push_back(0);
-  expected.push_back(5.65000e-01);
-  expected.push_back(1.64000e-01);
-  expected.push_back(7.14000e-01);
-  expected.push_back(-2.50000e-02);;
-  expected.push_back(-1.74000e-01);
-  expected.push_back(-1.17000e-01);
-  expected.push_back(3.25000e-01);
-  expected.push_back(5.70000e-02);
-  expected.push_back(7.88000e-01);
-  expected.push_back(2.26000e-01);
-  expected.push_back(2.15100);
-  expected.push_back(-6.58000e-01);
-  expected.push_back(2.40000);
-  expected.push_back(-7.34000e-01);
-  expected.push_back(1.28600);
-  expected.push_back(-1.53200);
-  expected.push_back(-2.78210e-02);
-  expected.push_back(4.52092e-02);
-  expected.push_back(2.01702e-01);
-  expected.push_back(-9.04183e-02);
-  expected.push_back(-1.98225e-01);
-  expected.push_back(-4.17315e-02);
-  expected.push_back(-2.43434e-01);
-  expected.push_back(-3.02554e-01);
-  expected.push_back(2.95316e-01);
-  expected.push_back(4.65835e-02);
-  expected.push_back(-2.36479e-01);
-  expected.push_back(-3.47763e-02);
-  expected.push_back(9.00000e-01);
-  expected.push_back(1);
-  expected.push_back(0);
-  expected.push_back(9.60000e-01);
-  expected.push_back(1.63000);
-  expected.push_back(0);
-  expected.push_back(7.75800e-01);
-  expected.push_back(1.50300e-01);
-  expected.push_back(1.46500);
-  expected.push_back(4.00000e-01);
-  expected.push_back(1.72000);
-  expected.push_back(2.50000e-01);
-  expected.push_back(9.80000e-01);
-  expected.push_back(4.40000e-02);
-  expected.push_back(1.43400);
-  expected.push_back(1.73000e-01);
-  expected.push_back(1.50700);
-  expected.push_back(1.09000e-01);
-  expected.push_back(1.71400);
-  expected.push_back(1.40000e-01);
-  expected.push_back(1.27540);
-  expected.push_back(1.85100e-01);
-  expected.push_back(5.00000e-01);
-  expected.push_back(4.00000e-01);
-  expected.push_back(3.01769e-01);
-  expected.push_back(1.86484);
-  expected.push_back(1.34977e-01);
-  expected.push_back(1.39570e-01);
-  expected.push_back(2.25625e-01);
-  expected.push_back(2.55025e-01);
-  expected.push_back(3.53481);
-  expected.push_back(-1);
-  expected.push_back(2.56160e-01);
-  expected.push_back(6.37917e-02);
-  expected.push_back(4.85778);
-  expected.push_back(2.03807e-01);
-  expected.push_back(4.47258e-02);
-  expected.push_back(6.03019);
-  expected.push_back(1.66355e-01);
-  expected.push_back(3.06288e-02);
-  expected.push_back(6.36114);
-  expected.push_back(1.33833e-01);
-  expected.push_back(2.14333e-02);
-  expected.push_back(6.64527);
-  expected.push_back(1.21110e-01);
-  expected.push_back(1.96227e-02);
-  expected.push_back(7.11866);
-  expected.push_back(1.11564e-01);
-  expected.push_back(1.72248e-02);
-  expected.push_back(8.05595);
-  expected.push_back(1.19049e+05);
-  expected.push_back(1.03648e+05);
-  expected.push_back(1.00000);
-  expected.push_back(1.00000);
-  expected.push_back(4.09821e-01);
-  expected.push_back(-3.45785e-01);
-  expected.push_back(5.88313e-01);
-  expected.push_back(2.74697);
-  expected.push_back(-1.13379e-01);
-  expected.push_back(2.51009e-01);
-  expected.push_back(6.35643);
-  expected.push_back(3.02247e-01);
-  expected.push_back(7.17737e-02);
-  expected.push_back(3.01731);
-  expected.push_back(2.38848e-01);
-  expected.push_back(5.20952e-02);
-  expected.push_back(4.19030);
-  expected.push_back(1.94058e-01);
-  expected.push_back(4.07836e-02);
-  expected.push_back(3.94312);
-  expected.push_back(1.70297e-01);
-  expected.push_back(3.85072e-02);
-  expected.push_back(4.03628);
-  expected.push_back(1.43394e-01);
-  expected.push_back(2.78155e-02);
-  expected.push_back(3.56000);
-  expected.push_back(1.57505e-01);
-  expected.push_back(3.71048e-02);
-  expected.push_back(5.25739);
-  expected.push_back(1);
-  expected.push_back(3.19825e-01);
-  expected.push_back(-6.84641e-02);
-  expected.push_back(6.12065e-01);
-  expected.push_back(2.32683);
-  expected.push_back(1.56762e-02);
-  expected.push_back(2.50457e-01);
-  expected.push_back(2.58840);
-  expected.push_back(1);
-  expected.push_back(2.32683);
-  expected.push_back(1.56762e-02);
-  expected.push_back(2.50457e-01);
-  expected.push_back(2.58840);
-  expected.push_back(1);
-  expected.push_back(3.79648e-01);
-  expected.push_back(-3.46368e-01);
-  expected.push_back(6.14250e-01);
-  expected.push_back(2.01064);
-  expected.push_back(-7.64787e-02);
-  expected.push_back(2.65981e-01);
-  expected.push_back(3.01728);
-
-  double variation = 0;
-  int count = 0;
-  for (int i = 0; i < modParams.size(); i++){
-    variation = fabs(expected[i] - modParams[i]->value);
-    if (variation > 0.001){
-      std::cout << modParams[i]->name << " value is not in epsilon." << endl;
-      std::cout << "Expected: " << expected[i] << endl;
-      std::cout << "Actual: " << modParams[i]->value << endl;
-      std::cout << "Variation: " << variation << endl;
-      count++;
-    }
-  }
-
-  std::cout << "\nTotal: " << count << endl;
-
-
 
   /*
   std::cout << "Fit results: \n" 
@@ -4515,7 +4203,7 @@ bool parseArg (string arg) {
   else if (variable == "maxSigma") maxSigma = number; 
   else if (variable == "polyEff") polyEff = (number > 0.5); 
   else if (variable == "m23Slices") m23Slices = (int) floor(number + 0.5); 
-  else if (variable == "bkgRandSeed") bkgHistRandSeed = 12; 
+  else if (variable == "bkgRandSeed") bkgHistRandSeed = (int) floor(number + 0.5); 
   else if (variable == "drop") {
     if      (assigned == "rho_1450") drop_rho_1450 = true;
     else if (assigned == "rho_1700") drop_rho_1700 = true;
@@ -4677,39 +4365,7 @@ int main (int argc, char** argv) {
 #ifdef TARGET_MPI
   //MPI finalize
   MPI_Finalize ();
-#endif
-
-  //TODO: delete variables to free up memory
-  delete m12;  
-  delete m13;
-  delete eventNumber;
-  delete foo;
-  delete foodal;
-  delete massd0;
-  delete deltam;
-  delete dtime;
-  delete sigma;
-  delete wSig0;
-  delete wBkg1;
-  delete wBkg2;
-  delete wBkg3;
-  delete wBkg4;
-  delete fixedRhoMass;
-  delete fixedRhoWidth;
-  delete constantOne;
-  delete constantTwo;  
-  delete constantZero;
-  delete constantMinusOne;
-  delete minDalitzX;
-  delete maxDalitzX;
-  delete minDalitzY;
-  delete maxDalitzY;
-  delete minDalitzZ;
-  delete maxDalitzZ;
-  delete motherM;
-  delete neutrlM;
-  delete chargeM;
-  delete massSum; 
+#endif 
 
   return 0; 
 }
