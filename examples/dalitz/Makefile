@@ -28,4 +28,4 @@ dalitz:		DalitzFit.o $(THRUSTO) $(ROOTUTILLIB)
 		@echo "$@ done"
 
 clean:
-		@rm -f *.o core dalitz dalitz.o 
+		@rm -f *.o core dalitz 
