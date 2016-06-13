@@ -77,52 +77,67 @@ TH1F* plotComponent (GooPdf* toPlot, double normFactor) {
 }
 
 void getMCData () {
-  data = new UnbinnedDataSet(dm); 
+  data = new UnbinnedDataSet(dm);
   std::ifstream mcreader;
-  mcreader.open("dataFiles/dstwidth_kpi_resMC.dat"); 
-  TH1F* mchist = new TH1F("mchist", "", 300, 0.1365, 0.1665);
+  mcreader.open("dataFiles/dstwidth_kpi_resMC.dat");
+  if (mcreader.is_open()) {
+  
+    TH1F* mchist = new TH1F("mchist", "", 300, 0.1365, 0.1665);
 
-  double currDM = 0; 
-  while (true) {
-    mcreader >> currDM;
-    if (mcreader.eof()) break; 
-    if (currDM < 0.13957) std::cout << "Bad DM\n"; 
-    data->addEvent(currDM);
-    mchist->Fill(currDM); 
+    double currDM = 0; 
+    while (true) {
+      mcreader >> currDM;
+      if (mcreader.eof()) break; 
+      if (currDM < 0.13957) std::cout << "Bad DM\n"; 
+      data->addEvent(currDM);
+      mchist->Fill(currDM);
+   
+    }
+
+    mchist->SetStats(false); 
+    mchist->SetMarkerStyle(8);
+    mchist->SetMarkerSize(0.6); 
+    mchist->Draw("p"); 
+
+    foo->SetLogy(true); 
+    foo->SaveAs("zach_mchist.png"); 
+
+    std::cout << "MC: Got " << data->getNumEvents() << " events.\n";
+    mcreader.close(); 
+  } else {
+      std::cout << "Error opening file: 'dataFiles/dstwidth_kpi_resMC.dat'";
+      exit(-1);
   }
-
-  mchist->SetStats(false); 
-  mchist->SetMarkerStyle(8);
-  mchist->SetMarkerSize(0.6); 
-  mchist->Draw("p"); 
-
-  foo->SetLogy(true); 
-  foo->SaveAs("zach_mchist.png"); 
-
-  std::cout << "MC: Got " << data->getNumEvents() << " events.\n"; 
 }
+
 
 void getData () {
   std::ifstream datareader;
-  datareader.open("dataFiles/zach/dstwidth_kpi_data.dat"); 
+  datareader.open("dataFiles/dstwidth_kpi_data.dat");
+  if (datareader.is_open()) { 
  
-  binnedData = new BinnedDataSet(dm); 
-  delete data;
-  data = new UnbinnedDataSet(dm); 
-  double currDM = 0; 
-  while (true) {
-    datareader >> currDM;
-    if (datareader.eof()) break; 
-    if (currDM > dm->upperlimit) continue;
-    if (currDM < dm->lowerlimit) continue;
-    data->addEvent(currDM);
-    data_hist->Fill(currDM); 
+    binnedData = new BinnedDataSet(dm); 
+    delete data;
+    data = new UnbinnedDataSet(dm); 
+    double currDM = 0; 
+    while (true) {
+      datareader >> currDM;
+      if (datareader.eof()) break; 
+      if (currDM > dm->upperlimit) continue;
+      if (currDM < dm->lowerlimit) continue;
+      data->addEvent(currDM);
+      data_hist->Fill(currDM); 
 
-    binnedData->addEvent(currDM); 
+      binnedData->addEvent(currDM); 
+    }
+
+    std::cout << "Data events: " << data->getNumEvents() << std::endl; 
+    datareader.close();
+
+  } else {
+      std::cout << "Error opening file: 'dataFiles/dstwidth_kpi_data.dat'";
+      exit(-1);
   }
-
-  std::cout << "Data events: " << data->getNumEvents() << std::endl; 
-  datareader.close(); 
 }
 
 void CudaMinimise (int dev, int fitType) {
@@ -392,7 +407,47 @@ void CudaMinimise (int dev, int fitType) {
   startCPU = times(&startProc);
   //ROOT::Minuit2::FunctionMinimum* min2 = datapdf.fit();
 
-  datapdf.fit(); 
+  datapdf.fit();
+  datapdf.getMinuitValues();
+  std::vector<Variable*> modParams;
+  total.getParameters(modParams);
+  
+  std::vector<double> expected;
+  expected.push_back(3.00000e-02);
+  expected.push_back(1.39570e-01);
+  expected.push_back(-1.00000);
+  expected.push_back(5.00000e-01);
+  expected.push_back(6.28037e-01);
+  expected.push_back(1.90474e-02);
+  expected.push_back(5.65864e-03);
+  expected.push_back(1.45402e-01);
+  expected.push_back(1.00000e-04);
+  expected.push_back(0);
+  expected.push_back(1.18496e-04);
+  expected.push_back(2.00000e-06);
+  expected.push_back(5.00000e-02);
+  expected.push_back(1.45464e-01);
+  expected.push_back(7.12482e-04);
+  expected.push_back(-2.31099e+01); 
+  expected.push_back(1.32901);
+  expected.push_back(1.45404e-01);
+  expected.push_back(2.10246e-04);
+  
+  double variation;
+  int count = 0;
+  for (int i = 0; i < modParams.size(); i++) {
+    variation = fabs(expected[i] - modParams[i]->value);
+    if (variation > 0.001) {
+      std::cout << modParams[i]->name << " value not in epsilon." << endl;
+      std::cout << "Expected: " << expected[i] << endl;
+      std::cout << "Actual: " << modParams[i]->value << endl;
+      std::cout << "Variation: " << variation << endl;
+      count++;
+    }
+  }
+
+  std::cout << "\nTotal variation: " << count << endl;
+  
   stopCPU = times(&stopProc);
   gettimeofday(&stopTime, NULL);
 
@@ -546,7 +601,10 @@ int main (int argc, char** argv) {
   myCPU = stopProc.tms_utime - startProc.tms_utime;
   std::cout << "Processor time: " << (myCPU / CLOCKS_PER_SEC) << std::endl;
 
-  delete binnedData; 
+  delete binnedData;
+  delete data;
+  delete foo;
+  delete dm; 
 
 #ifdef TARGET_MPI
   MPI_Finalize();
