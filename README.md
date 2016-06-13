@@ -11,7 +11,7 @@ Requirements
  * a compiler supporting OpenMP
 * If building for MPI:
  * Tested with MVAPICH 2.0, 3.0
-  * Uses MPI_CXXFLAGS and MPI_LIBS environment variables to conta
+  * Uses MPI_CXXFLAGS and MPI_LIBS environment variables to contain the paths for compilation and runtime libraries
 
 Installation
 
@@ -22,7 +22,7 @@ Installation
 * check that the path setting in Makefile for CUDALOCATION is correct for your system
  * If using OpenMP, CUDALOCATION should point at ./fakecuda
   * Set TARGET_OMP = 1 in the Makefile.config
-  * Put ./fakcuda on your PATH, e.g. export PATH=$PATH:$HOME/GooFit/fakecuda
+  * Put ./fakecuda on your PATH, e.g. export PATH=$PATH:$HOME/GooFit/fakecuda
     (n.b. the use of g++ is hardwired in fakecuda/nvcc; this is bad)
   * Install a copy of CUDA's thrust in ./thrust (there's nothing to compile)
 * then compile with gmake.
