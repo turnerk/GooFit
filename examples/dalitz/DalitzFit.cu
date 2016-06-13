@@ -394,8 +394,82 @@ void runToyFit (std::string toyFileName) {
   
   gettimeofday(&startTime, NULL);
   startCPU = times(&startProc);
+
   datapdf.setMaxCalls (10);
-  datapdf.fit(); 
+  datapdf.fit();
+  datapdf.getMinuitValues();
+  std::vector<Variable*> modParams;
+  signal->getParameters(modParams);
+
+  std::vector<double> expected;  //GooFit values
+  expected.push_back(-5.59500e-01);
+  expected.push_back(1.08761e-01);
+  expected.push_back(1);
+  expected.push_back(0);
+  expected.push_back(5.65000e-01);
+  expected.push_back(1.64000e-01);
+  expected.push_back(7.14000e-01);
+  expected.push_back(-2.50000e-02);;
+  expected.push_back(-1.74000e-01);
+  expected.push_back(-1.17000e-01);
+  expected.push_back(3.25000e-01);
+  expected.push_back(5.70000e-02);
+  expected.push_back(7.88000e-01);
+  expected.push_back(2.26000e-01);
+  expected.push_back(2.15100);
+  expected.push_back(-6.58000e-01);
+  expected.push_back(2.40000);
+  expected.push_back(-7.34000e-01);
+  expected.push_back(1.28600);
+  expected.push_back(-1.53200);
+  expected.push_back(-2.78210e-02);
+  expected.push_back(4.52092e-02);
+  expected.push_back(2.01702e-01);
+  expected.push_back(-9.04183e-02);
+  expected.push_back(-1.98225e-01);
+  expected.push_back(-4.17315e-02);
+  expected.push_back(-2.43434e-01);
+  expected.push_back(-3.02554e-01);
+  expected.push_back(2.95316e-01);
+  expected.push_back(4.65835e-02);
+  expected.push_back(-2.36479e-01);
+  expected.push_back(-3.47763e-02);
+  expected.push_back(7.75800e-01);
+  expected.push_back(1.50300e-01);
+  expected.push_back(1.46500);
+  expected.push_back(4.00000e-01);
+  expected.push_back(1.72000);
+  expected.push_back(2.50000e-01);
+  expected.push_back(9.80000e-01);
+  expected.push_back(4.40000e-02);
+  expected.push_back(1.43400);
+  expected.push_back(1.73000e-01);
+  expected.push_back(1.50700);
+  expected.push_back(1.09000e-01);
+  expected.push_back(1.71400);
+  expected.push_back(1.40000e-01);
+  expected.push_back(1.27540);
+  expected.push_back(1.85100e-01);
+  expected.push_back(5.00000e-01);
+  expected.push_back(4.00000e-01);
+  expected.push_back(0);
+  expected.push_back(1);  
+  
+  double variation;
+  int count = 0;
+  for (int i = 0; i < modParams.size(); i++) { 
+    variation = fabs(expected[i] - modParams[i]->value); //expected - actual
+    //check the variance of the generated parameter from its actual value and compare it to our epsilon of 0.001
+    if (variation > 0.001) {
+      std::cout << "\n" << modParams[i]->name << " value not in epsilon." << endl;
+      std::cout << "Expected: " << expected[i] << endl;
+      std::cout << "Actual: " << modParams[i]->value << endl;
+      std::cout << "Variation: " << variation << endl;
+      count++;
+    }
+  }
+  
+  std::cout << "\nTotal variances: " << count << endl;  
   stopCPU = times(&stopProc);
   gettimeofday(&stopTime, NULL);
 }
@@ -447,6 +521,10 @@ int main (int argc, char** argv) {
 #endif
 #endif
 
+ //check to see that the file exists
+ ifstream ifile(argv[1]);
+ if (ifile) {
+
   gStyle->SetCanvasBorderMode(0);
   gStyle->SetCanvasColor(10);
   gStyle->SetFrameFillColor(10);
@@ -480,5 +558,23 @@ int main (int argc, char** argv) {
   MPI_Finalize();
 #endif
 
+  delete m12;
+  delete m13;
+  delete eventNumber;
+  delete foo;
+  delete foodal;
+  delete constantOne;
+  delete constantZero;
+  delete fixedRhoMass;
+  delete fixedRhoWidth;
+  delete motherM;
+  delete chargeM;
+  delete neutrlM;
+  delete massSum;
+  delete data;
+ 
+ } else {
+    std::cout << "**ERROR: File not found**" << endl;
+ }
   return 0; 
 }
