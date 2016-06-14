@@ -455,21 +455,21 @@ void runToyFit (std::string toyFileName) {
   expected.push_back(0);
   expected.push_back(1);  
   
-  double variation;
+  double difference;
   int count = 0;
-  for (int i = 0; i < modParams.size(); i++) { 
-    variation = fabs(expected[i] - modParams[i]->value); //expected - actual
-    //check the variance of the generated parameter from its actual value and compare it to our epsilon of 0.001
-    if (variation > 0.001) {
-      std::cout << "\n" << modParams[i]->name << " value not in epsilon." << endl;
-      std::cout << "Expected: " << expected[i] << endl;
-      std::cout << "Actual: " << modParams[i]->value << endl;
-      std::cout << "Variation: " << variation << endl;
+  for (int i = 0; i < modParams.size(); i++) {
+    difference = fabs(expected[i] - modParams[i]->value);
+    if (difference > 0.001) {
+      std::cout << "\n" <<  modParams[i]->name << " value not in epsilon." << endl;
+      std::cout << "Expected value (compared to the GPU GooFitM value): " << expected[i] << endl;
+      std::cout << "Calculated value: " << modParams[i]->value << endl;
+      std::cout << "Difference: " << difference << endl;
       count++;
     }
   }
-  
-  std::cout << "\nTotal variances: " << count << endl;  
+
+  std::cout << "\nTotal differences: " << count << endl;
+
   stopCPU = times(&stopProc);
   gettimeofday(&stopTime, NULL);
 }
