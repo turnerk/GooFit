@@ -392,7 +392,47 @@ void CudaMinimise (int dev, int fitType) {
   startCPU = times(&startProc);
   //ROOT::Minuit2::FunctionMinimum* min2 = datapdf.fit();
 
-  datapdf.fit(); 
+  datapdf.fit();   
+  datapdf.getMinuitValues();
+  std::vector<Variable*> modParams;
+  total.getParameters(modParams); 
+  
+  std::vector<double> expected;
+  expected.push_back(3.00000e-02);
+  expected.push_back(1.39570e-01);
+  expected.push_back(-1.00000);
+  expected.push_back(5.00000e-01);
+  expected.push_back(6.28037e-01);
+  expected.push_back(1.90474e-02);
+  expected.push_back(5.65864e-03);
+  expected.push_back(1.45402e-01);
+  expected.push_back(1.00000e-04);
+  expected.push_back(0);
+  expected.push_back(1.18496e-04);
+  expected.push_back(2.00000e-06);
+  expected.push_back(5.00000e-02);
+  expected.push_back(1.45464e-01);
+  expected.push_back(7.12482e-04);
+  expected.push_back(-2.31099e+01);
+  expected.push_back(1.32901);
+  expected.push_back(1.45404e-01);
+  expected.push_back(2.10246e-04);
+
+  double difference;
+  int count = 0;
+  for (int i = 0; i < modParams.size(); i++) {
+    difference = fabs(expected[i] - modParams[i]->value);
+    if (difference > 0.001) {
+      std::cout << "\n" << modParams[i]->name << " value not in epsilon." << endl;
+      std::cout << "Expected value (compared to the GPU GooFitM value): " << expected[i] << endl;
+      std::cout << "Calculated value: " << modParams[i]->value << endl;
+      std::cout << "Difference: " << difference  << endl;
+      count++;
+    }
+  }
+
+  std::cout << "\nTotal differences: " << count << endl;
+ 
   stopCPU = times(&stopProc);
   gettimeofday(&stopTime, NULL);
 
