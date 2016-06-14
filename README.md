@@ -17,7 +17,7 @@ Installation
 
 * Clone with git:
 
-        git clone git://github.com/galapaegos/GooFit.git
+        git clone git://github.com/turnerk/GooFit.git
 
 * check that the path setting in Makefile for CUDALOCATION is correct for your system
  * If using OpenMP, CUDALOCATION should point at ./fakecuda
