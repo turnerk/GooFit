@@ -120,10 +120,10 @@ void getToyData (std::string toyFileName) {
     // K0 veto, by throwing out events with 0.475 < m23 < 0.505. 
 
     // EXERCISE 3: Use both the above. 
-
-    //eventNumber->value = data->getNumEvents(); 
-    //data->addEvent(); 
     */
+    eventNumber->value = data->getNumEvents(); 
+    data->addEvent(); 
+    
 
     //sscanf the buffer, 20 elements
     //sscanf (tmp, "%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf", &dummy, &dummy, &m12->value, &m13->value, &dummy, &dummy,
@@ -139,11 +139,10 @@ void getToyData (std::string toyFileName) {
     dalitzplot.Fill(m12->value, m13->value); 
   }
 
-#if 0
   dalitzplot.SetStats(false); 
   dalitzplot.Draw("colz");
   foodal->SaveAs("dalitzplot.png"); 
-#endif
+
 }
 
 GooPdf* makeKzeroVeto () {
@@ -395,14 +394,13 @@ void runToyFit (std::string toyFileName) {
   gettimeofday(&startTime, NULL);
   startCPU = times(&startProc);
 
-  datapdf.setMaxCalls (10);
   datapdf.fit();
   datapdf.getMinuitValues();
   std::vector<Variable*> modParams;
   signal->getParameters(modParams);
 
   std::vector<double> expected;  //GooFit values
-  expected.push_back(-5.59500e-01);
+  expected.push_back(-5.59500e-01); 
   expected.push_back(1.08761e-01);
   expected.push_back(1);
   expected.push_back(0);
