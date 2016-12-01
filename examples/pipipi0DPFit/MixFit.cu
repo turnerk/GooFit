@@ -337,7 +337,7 @@ void getToyData (float sigweight = 0.9) {
     std::cout << buffer; 
   }
 
-  TRandom3 donram(0); 
+  TRandom3 donram(12); 
 
   int nsig = 0;
   double sigprob = 0;
@@ -816,8 +816,8 @@ void runToyFit (int ifile, int nfile, bool noPlots = true) {
   wSig0 = new Variable("wSig0", 0, 1);
 
   for (int i =0 ;i<nfile;i++){
-//      sprintf(strbuffer, "dataFiles/toyPipipi0/dalitz_toyMC_%03d.txt", (i+ifile)%100);
-      sprintf(strbuffer, "dataFiles/toyPipipi0/dalitz_toyMC_%03d.txt", ifile);
+//      sprintf(strbuffer, "../../dataFiles/toyPipipi0/dalitz_toyMC_%03d.txt", (i+ifile)%100);
+      sprintf(strbuffer, "../../dataFiles/toyPipipi0/dalitz_toyMC_%03d.txt", ifile);
       toyFileName = strbuffer;
       getToyData(toySigFraction);
   }
@@ -2169,7 +2169,7 @@ GooPdf* makeSigmaHists () {
   for (int i = 0; i < m23Slices; ++i) sigmaHists[i] = new BinnedDataSet(sigma); 
 
   std::ifstream reader;
-  readWrapper(reader,"./dataFiles/signalMC_truth_mm_0.txt");
+  readWrapper(reader,"../../dataFiles/signalMC_truth_mm_0.txt");
   std::string buffer;
   while (!reader.eof()) {
     reader >> buffer;
@@ -2281,8 +2281,8 @@ GooPdf* makeOverallSignal () {
   binEffData = new BinnedDataSet(lvars); 
   createWeightHistogram();
   std::cout << "Loading efficiency data\n"; 
-  loadDataFile("./dataFiles/efficiency_flat.txt", &effdata); 
-
+  loadDataFile("../../dataFiles/efficiency_flat.txt", &effdata); 
+  
   if (saveEffPlot) {
     foodal->cd();
     underlyingBins->Draw("colz"); 
@@ -2336,7 +2336,7 @@ GooPdf* makeOverallSignal () {
   std::cout << "Time for sigma fit : " << totalTime.tv_sec + totalTime.tv_usec/1000000.0 << " seconds." << std::endl;
   jsupdf.getMinuitValues();
   */
-  sprintf(strbuffer, "signal_sigma_%islices_pdf.txt", m23Slices);
+  sprintf(strbuffer, "../../signal_sigma_%islices_pdf.txt", m23Slices);
   readFromFile(sig0_jsugg, strbuffer);
   sig0_jsugg->setParameterConstantness(true); 
    
@@ -2495,7 +2495,7 @@ void runGeneratedMCFit (char* fname, int genResolutions, double dplotres) {
   lvars.push_back(m12); 
   lvars.push_back(m13);
   binEffData = new BinnedDataSet(lvars); 
-  loadDataFile("./dataFiles/efficiency_gen.txt", &effdata, 1); 
+  loadDataFile("../../dataFiles/efficiency_gen.txt", &effdata, 1); 
   GooPdf* eff = makeEfficiencyPdf();
   m12->numbins = oldBins1;
   m13->numbins = oldBins2; 
@@ -2958,10 +2958,10 @@ GooPdf* makeBkg2DalitzPdf (bool fixem = true) {
     // Originally had massD0 sidebands separated into deltaM high and low,
     // but these distributions were extremely similar - collapsed them 
     // into just massD0 sidebands. 
-    comps.push_back(makeBackgroundHistogram(101, "./dataFiles/sideband1.txt"));
-    comps.push_back(makeBackgroundHistogram(102, "./dataFiles/sideband2.txt"));
-    //comps.push_back(makeBackgroundHistogram(103, "./dataFiles/sideband3.txt"));
-    //comps.push_back(makeBackgroundHistogram(104, "./dataFiles/sideband4.txt"));
+    comps.push_back(makeBackgroundHistogram(101, "../../dataFiles/sideband1.txt"));
+    comps.push_back(makeBackgroundHistogram(102, "../../dataFiles/sideband2.txt"));
+    //comps.push_back(makeBackgroundHistogram(103, "../../dataFiles/sideband3.txt"));
+    //comps.push_back(makeBackgroundHistogram(104, "../../dataFiles/sideband4.txt"));
     weights.clear();
     weights.push_back(new Variable("sband1Weight", 300000, 1000, 100, 750000));
     weights.push_back(new Variable("sband2Weight", 100000, 1000, 100, 500000));
@@ -3014,7 +3014,7 @@ GooPdf* makeBkg3Eff () {
   m13->numbins = 30;
   BinnedDataSet* bkg3_eff_data = new BinnedDataSet(weights); 
   std::ifstream reader;
-  readWrapper(reader,"./dataFiles/efficiency_bkg3_flat.txt"); 
+  readWrapper(reader,"../../dataFiles/efficiency_bkg3_flat.txt"); 
   std::string buffer;
   while (!reader.eof()) {
     reader >> buffer;
@@ -3048,7 +3048,7 @@ GooPdf* makeBkg3Eff () {
 
 SmoothHistogramPdf* makeBackgroundHistogram (int bkgnum, string overridename) {
   std::ifstream reader;
-  sprintf(strbuffer, "./dataFiles/bkgDalitz_%i.txt", bkgnum); 
+  sprintf(strbuffer, "../../dataFiles/bkgDalitz_%i.txt", bkgnum); 
   if (overridename != "") sprintf(strbuffer, "%s", overridename.c_str()); 
   readWrapper(reader,strbuffer);
   std::string buffer;
@@ -3598,7 +3598,163 @@ void runCanonicalFit (char* fname, bool noPlots = true) {
 	 1000*ptr_to_dtau->value, 1000*ptr_to_dtau->error,
 	 100*ptr_to_xmix->value, 100*ptr_to_xmix->error,
 	 100*ptr_to_ymix->value, 100*ptr_to_ymix->error);
+  
+  std::vector<Variable*> modParams;
+  overallSignal->getParameters(modParams);
 
+  std::vector<double> expected;
+  expected.push_back(4.10100e-01);
+  expected.push_back(1.60000e-03);
+  expected.push_back(5.50000e-03);
+  expected.push_back(-5.59500e-01);
+  expected.push_back(1.08761e-01);
+  expected.push_back(1);
+  expected.push_back(0);
+  expected.push_back(5.65000e-01);
+  expected.push_back(1.64000e-01);
+  expected.push_back(7.14000e-01);
+  expected.push_back(-2.50000e-02);;
+  expected.push_back(-1.74000e-01);
+  expected.push_back(-1.17000e-01);
+  expected.push_back(3.25000e-01);
+  expected.push_back(5.70000e-02);
+  expected.push_back(7.88000e-01);
+  expected.push_back(2.26000e-01);
+  expected.push_back(2.15100);
+  expected.push_back(-6.58000e-01);
+  expected.push_back(2.40000);
+  expected.push_back(-7.34000e-01);
+  expected.push_back(1.28600);
+  expected.push_back(-1.53200);
+  expected.push_back(-2.78210e-02);
+  expected.push_back(4.52092e-02);
+  expected.push_back(2.01702e-01);
+  expected.push_back(-9.04183e-02);
+  expected.push_back(-1.98225e-01);
+  expected.push_back(-4.17315e-02);
+  expected.push_back(-2.43434e-01);
+  expected.push_back(-3.02554e-01);
+  expected.push_back(2.95316e-01);
+  expected.push_back(4.65835e-02);
+  expected.push_back(-2.36479e-01);
+  expected.push_back(-3.47763e-02);
+  expected.push_back(9.00000e-01);
+  expected.push_back(1);
+  expected.push_back(0);
+  expected.push_back(9.60000e-01);
+  expected.push_back(1.63000);
+  expected.push_back(0);
+  expected.push_back(7.75800e-01);
+  expected.push_back(1.50300e-01);
+  expected.push_back(1.46500);
+  expected.push_back(4.00000e-01);
+  expected.push_back(1.72000);
+  expected.push_back(2.50000e-01);
+  expected.push_back(9.80000e-01);
+  expected.push_back(4.40000e-02);
+  expected.push_back(1.43400);
+  expected.push_back(1.73000e-01);
+  expected.push_back(1.50700);
+  expected.push_back(1.09000e-01);
+  expected.push_back(1.71400);
+  expected.push_back(1.40000e-01);
+  expected.push_back(1.27540);
+  expected.push_back(1.85100e-01);
+  expected.push_back(5.00000e-01);
+  expected.push_back(4.00000e-01);
+  expected.push_back(3.01769e-01);
+  expected.push_back(1.86484);
+  expected.push_back(1.34977e-01);
+  expected.push_back(1.39570e-01);
+  expected.push_back(2.25625e-01);
+  expected.push_back(2.55025e-01);
+  expected.push_back(3.53481);
+  expected.push_back(-1);
+  expected.push_back(2.56160e-01);
+  expected.push_back(6.37917e-02);
+  expected.push_back(4.85778);
+  expected.push_back(2.03807e-01);
+  expected.push_back(4.47258e-02);
+  expected.push_back(6.03019);
+  expected.push_back(1.66355e-01);
+  expected.push_back(3.06288e-02);
+  expected.push_back(6.36114);
+  expected.push_back(1.33833e-01);
+  expected.push_back(2.14333e-02);
+  expected.push_back(6.64527);
+  expected.push_back(1.21110e-01);
+  expected.push_back(1.96227e-02);
+  expected.push_back(7.11866);
+  expected.push_back(1.11564e-01);
+  expected.push_back(1.72248e-02);
+  expected.push_back(8.05595);
+  expected.push_back(1.19049e+05);
+  expected.push_back(1.03648e+05);
+  expected.push_back(1.00000);
+  expected.push_back(1.00000);
+  expected.push_back(4.09821e-01);
+  expected.push_back(-3.45785e-01);
+  expected.push_back(5.88313e-01);
+  expected.push_back(2.74697);
+  expected.push_back(-1.13379e-01);
+  expected.push_back(2.51009e-01);
+  expected.push_back(6.35643);
+  expected.push_back(3.02247e-01);
+  expected.push_back(7.17737e-02);
+  expected.push_back(3.01731);
+  expected.push_back(2.38848e-01);
+  expected.push_back(5.20952e-02);
+  expected.push_back(4.19030);
+  expected.push_back(1.94058e-01);
+  expected.push_back(4.07836e-02);
+  expected.push_back(3.94312);
+  expected.push_back(1.70297e-01);
+  expected.push_back(3.85072e-02);
+  expected.push_back(4.03628);
+  expected.push_back(1.43394e-01);
+  expected.push_back(2.78155e-02);
+  expected.push_back(3.56000);
+  expected.push_back(1.57505e-01);
+  expected.push_back(3.71048e-02);
+  expected.push_back(5.25739);
+  expected.push_back(1);
+  expected.push_back(3.19825e-01);
+  expected.push_back(-6.84641e-02);
+  expected.push_back(6.12065e-01);
+  expected.push_back(2.32683);
+  expected.push_back(1.56762e-02);
+  expected.push_back(2.50457e-01);
+  expected.push_back(2.58840);
+  expected.push_back(1);
+  expected.push_back(2.32683);
+  expected.push_back(1.56762e-02);
+  expected.push_back(2.50457e-01);
+  expected.push_back(2.58840);
+  expected.push_back(1);
+  expected.push_back(3.79648e-01);
+  expected.push_back(-3.46368e-01);
+  expected.push_back(6.14250e-01);
+  expected.push_back(2.01064);
+  expected.push_back(-7.64787e-02);
+  expected.push_back(2.65981e-01);
+  expected.push_back(3.01728);
+
+  double difference;
+  int count = 0;
+  for (int i = 0; i < modParams.size(); i++) {
+    difference = fabs(expected[i] - modParams[i]->value);
+    if (difference > 0.001) {
+      std::cout << "\n" <<  modParams[i]->name << " value not in epsilon." << endl;
+      std::cout << "Expected value (compared to the GPU GooFitM value): " << expected[i] << endl;
+      std::cout << "Calculated value: " << modParams[i]->value << endl;
+      std::cout << "Difference: " << difference << endl;
+      count++;
+    }
+  }
+
+  std::cout << "\nTotal differences: " << count << endl;
+
+<<<<<<< Updated upstream
   std::vector<Variable*> modParams;
   overallSignal->getParameters(modParams);
 
@@ -3754,6 +3910,10 @@ void runCanonicalFit (char* fname, bool noPlots = true) {
 
   std::cout << "\nTotal differences: " << count << endl;
 
+=======
+
+  
+>>>>>>> Stashed changes
   /*
   std::cout << "Fit results: \n" 
 	    << "tau    : (" << 1000*ptr_to_dtau->value << " $\\pm$ " << 1000*ptr_to_dtau->error << ") fs\n"
@@ -3804,7 +3964,7 @@ void runSigmaFit (char* fname) {
   gettimeofday(&stopTime, NULL);
   datapdf.getMinuitValues(); 
 
-  sprintf(strbuffer, "signal_sigma_%islices_pdf.txt", m23Slices);
+  sprintf(strbuffer, "../../signal_sigma_%islices_pdf.txt", m23Slices);
   writeToFile(jsu_gg, strbuffer);
 
   foo->cd(); 
@@ -3961,8 +4121,8 @@ void runEfficiencyFit (int which) {
   makeKzeroVeto(); 
   //GooPdf* eff = makeEfficiencyPoly();
   GooPdf* eff = makeEfficiencyPdf();
-  if (3 == which) loadDataFile("./dataFiles/efficiency_bkg3_flat.txt"); 
-  else loadDataFile("./dataFiles/efficiency_flat.txt"); 
+  if (3 == which) loadDataFile("../../dataFiles/efficiency_bkg3_flat.txt"); 
+  else loadDataFile("../../dataFiles/efficiency_flat.txt"); 
 
   if (underlyingBins) {
     underlyingBins->GetZaxis()->SetRangeUser(10, 40); 
@@ -4130,7 +4290,7 @@ GooPdf* runBackgroundDalitzFit (int bkgType, bool plots) {
     break;
   }
 
-  sprintf(strbuffer, "./dataFiles/bkgDalitz_%i.txt", bkgType);
+  sprintf(strbuffer, "../../dataFiles/bkgDalitz_%i.txt", bkgType);
   loadDataFile(strbuffer);
   
   bkgPdf->setData(data); 
@@ -4165,17 +4325,17 @@ GooPdf* runBackgroundDalitzFit (int bkgType, bool plots) {
 }
 
 void getBackgroundFile (int bkgType) {
-  if (mikhailSetup) sprintf(strbuffer, "./bkg_%i_mikhail.txt", bkgType); 
+  if (mikhailSetup) sprintf(strbuffer, "../../bkg_%i_mikhail.txt", bkgType); 
   else {
     if (2 == bkgType) {
-      if (Sideband == bkg2Model) sprintf(strbuffer, "./bkg_2_pdf_sideband_%islices.txt", m23Slices);
+      if (Sideband == bkg2Model) sprintf(strbuffer, "../../bkg_2_pdf_sideband_%islices.txt", m23Slices);
       else sprintf(strbuffer, "./bkg_2_pdf_%islices.txt", m23Slices);
     }
     else {
       string pdftype;
       if (((3 == bkgType) && (!useBackground3Hist)) ||
 	  ((4 == bkgType) && (!useBackground4Hist))) pdftype = "_param";
-      sprintf(strbuffer, "./bkg_%i_pdf%s.txt", bkgType, pdftype.c_str());
+      sprintf(strbuffer, "../../bkg_%i_pdf%s.txt", bkgType, pdftype.c_str());
     }
   }
 }
@@ -4294,7 +4454,7 @@ void runBackgroundSigmaFit (int bkgType) {
     break;
   }
 
-  sprintf(strbuffer, "./dataFiles/bkgDalitz_%i.txt", bkgType);
+  sprintf(strbuffer, "../../dataFiles/bkgDalitz_%i.txt", bkgType);
   loadDataFile(strbuffer);
   bkgPdf->setData(data); 
 
@@ -4321,7 +4481,7 @@ void writeBackgroundHistograms (int bkg) {
   SmoothHistogramPdf* bkg3 = makeBackgroundHistogram(bkg); 
   thrust::host_vector<fptype> host_hist;
   bkg3->extractHistogram(host_hist); 
-  sprintf(strbuffer, "Bkg%i_dalitzhist.txt", bkg); 
+  sprintf(strbuffer, "../../Bkg%i_dalitzhist.txt", bkg); 
   writeListOfNumbers(host_hist, strbuffer); 
 
 }
@@ -4409,6 +4569,14 @@ bool parseArg (string arg) {
 #endif
 
 int main (int argc, char** argv) {
+
+  ifstream ifile;
+  ifile.open(argv[2]); // open the stream
+  if (!ifile.good()) {
+    cout << "Error reading from file." << endl;
+    exit(-1);
+  }
+
 #ifdef TARGET_MPI
   //BH MPI stuff
   MPI_CHECK(MPI_Init (&argc, &argv));
@@ -4521,6 +4689,39 @@ int main (int argc, char** argv) {
   //MPI finalize
   MPI_Finalize ();
 #endif 
+  
+  delete m12;
+  delete m13;
+  delete eventNumber;
+  delete foo;
+  delete foodal;
+  delete massd0;
+  delete deltam;
+  delete dtime;
+  delete sigma;
+  delete wSig0;
+  delete wBkg1;
+  delete wBkg2;
+  delete wBkg3;
+  delete wBkg4;
+  delete fixedRhoMass;
+  delete fixedRhoWidth;
+  delete constantOne;
+  delete constantTwo;
+  delete constantZero;
+  delete constantMinusOne;
+  delete minDalitzX;
+  delete maxDalitzX;
+  delete minDalitzY;
+  delete maxDalitzY;
+  delete minDalitzZ;
+  delete maxDalitzZ;
+  delete motherM;
+  delete neutrlM;
+  delete chargeM;
+  delete massSum;
+
+  ifile.close(); // close the stream
 
   return 0; 
 }
