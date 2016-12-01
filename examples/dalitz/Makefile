@@ -16,16 +16,30 @@ THRUSTO		= $(WRKDIR)/Variable.o $(WRKDIR)/FitManager.o $(WRKDIR)/GooPdfCUDA.o $(
 ROOTRIPDIR	= $(GOOFITDIR)/rootstuff
 ROOTUTILLIB	= $(ROOTRIPDIR)/libRootUtils.so 
 
+
 .SUFFIXES: 
 
-all:	dalitz
+all:	dalitz scattervtest example 
 
 %.o:	%.cu
 	$(CXX) $(INCLUDES) $(ROOT_INCLUDES) $(DEFINEFLAGS) $(CXXFLAGS) -c -o $@ $<
 
 dalitz:		DalitzFit.o $(THRUSTO) $(ROOTUTILLIB) 
 		$(LD) $(LDFLAGS) $^ $(LIBS) $(ROOT_LIBS) $(OutPutOpt) $@
+		cp DalitzFit.cu DalitzFit.cc
+		@echo "$@ done"
+
+example:	example.o $(THRUSTO) $(ROOTUTILLIB)
+		$(LD) $(LDFLAGS) $^ $(LIBS) $(ROOT_LIBS) $(OutPutOpt) $@
+		@echo "$@ done"
+
+scattervtest:	scattervtest.o $(THRUSTO $(ROOTUTILLIB)
+		$(LD) $(LDFLAGS) $^ $(LIBS) $(ROOT_LIBS) $(OutPutOpt) $@
 		@echo "$@ done"
 
 clean:
+<<<<<<< Updated upstream
 		@rm -f *.o core dalitz dalitzplot.png 
+=======
+		@rm -f *.o core dalitz DalitzFit.cc dalitzplot.png scattervtest example
+>>>>>>> Stashed changes
