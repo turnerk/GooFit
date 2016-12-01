@@ -27,6 +27,12 @@
 #include "FitManager.hh" 
 #include "UnbinnedDataSet.hh"
 
+/*
+const int MAX_CHARS_PER_LINE = 512;
+const int MAX_TOKENS_PER_LINE = 30;
+const char* const DELIMITER = " ";
+*/
+
 using namespace std;
 
 TCanvas* foo; 
@@ -85,13 +91,18 @@ void getToyData (std::string toyFileName) {
 
   double dummy = 0; 
   while (!reader.eof()) {
+<<<<<<< Updated upstream
     reader.getline (tmp, len, '\n');
     /*
+=======
+    //read the whole line at once
+    reader.getline(tmp, len, '\n');
+>>>>>>> Stashed changes
     reader >> dummy;
     reader >> dummy;      // m23, m(pi+ pi-), called m12 in processToyRoot convention. 
     reader >> m12->value; // Already swapped according to D* charge. m12 = m(pi+pi0)
     reader >> m13->value;
-
+    
     // Errors on Dalitz variables
     reader >> dummy; 
     reader >> dummy; 
@@ -125,9 +136,17 @@ void getToyData (std::string toyFileName) {
     data->addEvent(); 
     
 
+<<<<<<< Updated upstream
     //sscanf the buffer, 20 elements
     //sscanf (tmp, "%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf", &dummy, &dummy, &m12->value, &m13->value, &dummy, &dummy,
     //	&dummy, &dummy, &dummy, &dummy, &dummy, &dummy, &dummy, &dummy, &dummy, &dummy, &dummy, &dummy, &dummy, &dummy);
+=======
+    eventNumber->value = data->getNumEvents(); 
+    data->addEvent(); 
+
+    // sscanf the buffer, 20 elements
+    sscanf (tmp, "%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf", &dummy, &dummy, &m12->value, &m13->value, &dummy, &dummy,&dummy, &dummy, &dummy, &dummy, &dummy, &dummy, &dummy, &dummy, &dummy, &dummy, &dummy, &dummy, &dummy, &dummy);
+>>>>>>> Stashed changes
     sscanf (tmp, "%lf %lf %lf %lf", &dummy, &dummy, &m12->value, &m13->value);
 
     std::vector <fptype> list;
@@ -393,7 +412,10 @@ void runToyFit (std::string toyFileName) {
   
   gettimeofday(&startTime, NULL);
   startCPU = times(&startProc);
+<<<<<<< Updated upstream
 
+=======
+>>>>>>> Stashed changes
   datapdf.fit();
   datapdf.getMinuitValues();
   std::vector<Variable*> modParams;
@@ -467,12 +489,41 @@ void runToyFit (std::string toyFileName) {
   }
 
   std::cout << "\nTotal differences: " << count << endl;
+<<<<<<< Updated upstream
 
+=======
+ 
+>>>>>>> Stashed changes
   stopCPU = times(&stopProc);
   gettimeofday(&stopTime, NULL);
 }
 
 int main (int argc, char** argv) {
+
+  ifstream ifile;
+
+/*
+  while (!ifile.eof()) {
+    char line[MAX_CHARS_PER_LINE];
+    ifile.getline(line, MAX_CHARS_PER_LINE);
+   
+    const char* tokens[MAX_TOKENS_PER_LINE] = {};
+    
+    // parse the line
+    tokens[0] = strtok(line, DELIMITER); // first token
+    if (tokens[0]) {
+      for (int i = 1; i < MAX_TOKENS_PER_LINE; i++) {
+        tokens[i] = strtok(0, DELIMITER); 
+        if (!tokens[i]) break;
+      }
+    }
+
+    // do something with the tokens
+
+  }
+
+*/
+
 #ifdef TARGET_MPI
   MPI_Init(&argc, &argv);
 
@@ -480,6 +531,22 @@ int main (int argc, char** argv) {
   int myId, numProcs;
   MPI_Comm_size(MPI_COMM_WORLD, &numProcs);
   MPI_Comm_rank(MPI_COMM_WORLD, &myId);
+
+  if (myId == 0) {
+    ifile.open(argv[1]); // open the stream
+    if (!ifile.good()) {
+      cout << "Error reading from file." << endl;
+      exit(-1);
+    }
+  }
+
+#else
+
+  ifile.open(argv[1]); // open the stream
+  if (!ifile.good()) {
+    cout << "Error reading from file." << endl;
+    exit(-1);
+  }
 
 #ifndef TARGET_OMP
   //set the processes to gpus here
@@ -569,10 +636,16 @@ int main (int argc, char** argv) {
   delete chargeM;
   delete neutrlM;
   delete massSum;
+<<<<<<< Updated upstream
   delete data;
  
  } else {
     std::cout << "**ERROR: File not found**" << endl;
  }
+=======
+  //delete data;
+  
+  ifile.close(); // close the stream
+>>>>>>> Stashed changes
   return 0; 
 }
