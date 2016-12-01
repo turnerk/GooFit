@@ -15,15 +15,22 @@ const unsigned int SPECIAL_RESOLUTION_FLAG = 999999999;
 // own cache, hence the '10'. Ten threads should be enough for anyone! 
 MEM_DEVICE WaveHolder* cWaves[10]; 
 
+<<<<<<< Updated upstream
 EXEC_TARGET bool inDalitz (const fptype &m12, const fptype &m13, const fptype &bigM, const fptype &dm1, const fptype &dm2, const fptype &dm3) {
   fptype dm1pdm2 = dm1 + dm2;
   fptype bigMmdm3 = bigM - dm3;
+=======
+EXEC_TARGET inline bool inDalitz (const fptype &m12, const fptype &m13, const fptype &bigM, const fptype &dm1, const fptype &dm2, const fptype &dm3) {
+  float dm1pdm2 = dm1 + dm2;
+  float bigMmdm3 = bigM - dm3;
+>>>>>>> Stashed changes
  
   bool m12less = (m12 < dm1pdm2*dm1pdm2) ? false : true; 
   //if (m12 < dm1pdm2*dm1pdm2) return false; // This m12 cannot exist, it's less than the square of the (1,2) particle mass.
   bool m12grea = (m12 > bigMmdm3*bigMmdm3) ? false : true;
   //if (m12 > bigMmdm3*bigMmdm3) return false;   // This doesn't work either, there's no room for an at-rest 3 daughter. 
 
+<<<<<<< Updated upstream
   fptype dm11 = dm1*dm1; 
   fptype dm22 = dm2*dm2;
   fptype dm33 = dm3*dm3;
@@ -42,16 +49,41 @@ EXEC_TARGET bool inDalitz (const fptype &m12, const fptype &m13, const fptype &b
   // Bounds for m13 at this value of m12.
   //fptype minimum = (e1star + e3star)*(e1star + e3star) - POW(SQRT(e1star1 - dm11) + SQRT(e3star*e3star - dm33), 2);
   fptype minimum = (e1star + e3star)*(e1star + e3star) - (rte1mdm11 + rte3mdm33)*(rte1mdm11 + rte3mdm33);
+=======
+  float dm11 = dm1*dm1; 
+  float dm22 = dm2*dm2;
+  float dm33 = dm3*dm3;
+ 
+  // Calculate energies of 1 and 3 particles in m12 rest frame. 
+  //float e1star = 0.5 * (m12 - dm2*dm2 + dm1*dm1) / SQRT(m12); 
+  float e1star = 0.5 * (m12 - dm22 + dm11) / SQRT(m12); 
+  float e1star1 = e1star*e1star;
+  //float e3star = 0.5 * (bigM*bigM - m12 - dm3*dm3) / SQRT(m12); 
+  float e3star = 0.5 * (bigM*bigM - m12 - dm33) / SQRT(m12); 
+  float e3star3 = e3star*e3star;
+
+  float rte1mdm11 = SQRT(e1star1 - dm11);
+  float rte3mdm33 = SQRT(e3star3 - dm33);
+
+  // Bounds for m13 at this value of m12.
+  //float minimum = (e1star + e3star)*(e1star + e3star) - POW(SQRT(e1star1 - dm11) + SQRT(e3star*e3star - dm33), 2);
+  float minimum = (e1star + e3star)*(e1star + e3star) - (rte1mdm11 + rte3mdm33)*(rte1mdm11 + rte3mdm33);
+>>>>>>> Stashed changes
 
   bool m13less = (m13 < minimum) ? false : true;
   //if (m13 < minimum) return false;
 
+<<<<<<< Updated upstream
   //fptype maximum = POW(e1star + e3star, 2) - POW(SQRT(e1star*e1star - dm1*dm1) - SQRT(e3star*e3star - dm3*dm3), 2);
   fptype maximum = (e1star + e3star)*(e1star + e3star) - (rte1mdm11 - rte3mdm33)*(rte1mdm11 - rte3mdm33);
+=======
+  //float maximum = POW(e1star + e3star, 2) - POW(SQRT(e1star*e1star - dm1*dm1) - SQRT(e3star*e3star - dm3*dm3), 2);
+  float maximum = (e1star + e3star)*(e1star + e3star) - (rte1mdm11 - rte3mdm33)*(rte1mdm11 - rte3mdm33);
+>>>>>>> Stashed changes
   bool m13grea = (m13 > maximum) ? false : true;
   //if (m13 > maximum) return false;
 
-  return m12less && m12grea && m13less && m13grea; 
+  return m12less && m12grea && m13less && m13grea;
 }
 
 EXEC_TARGET inline int parIndexFromResIndex (const int &resIndex) {
