@@ -59,8 +59,8 @@ EXEC_TARGET fptype device_DalitzPlot (fptype* evt, fptype* p, unsigned int* indi
   fptype daug2Mass  = functorConstants[idx[1] + 2]; 
   fptype daug3Mass  = functorConstants[idx[1] + 3]; 
 
-  fptype m12 = evt[indices[2 + idx[0]]]; 
-  fptype m13 = evt[indices[3 + idx[0]]];
+  fptype m12 = evt[indices[2 + idx[0]]]; //
+  fptype m13 = evt[indices[3 + idx[0]]]; //
 
   if (!inDalitz(m12, m13, motherMass, daug1Mass, daug2Mass, daug3Mass)) return 0; 
   int evtNum = (int) FLOOR(0.5 + evt[indices[4 + idx[0]]]); 
@@ -70,27 +70,37 @@ EXEC_TARGET fptype device_DalitzPlot (fptype* evt, fptype* p, unsigned int* indi
   unsigned int cacheToUse    = idx[3]; 
 
   int enr = evtNum*numResonances;
+<<<<<<< Updated upstream
 #pragma unroll
   for (int i = 0; i < numResonances; ++i)
   {
+=======
+  
+  for (int i = 0; i < numResonances; ++i) {
+>>>>>>> Stashed changes
     int paramIndex  = parIndexFromResIndex_DP(i);
-    fptype amp_real = p[indices[paramIndex+0]];
-    fptype amp_imag = p[indices[paramIndex+1]];
+    fptype amp_real = p[indices[paramIndex+0]]; //
+    fptype amp_imag = p[indices[paramIndex+1]]; //
 
     devcomplex<fptype> matrixelement((cResonances[cacheToUse][enr + i]).real,
 				     (cResonances[cacheToUse][enr + i]).imag); 
     matrixelement.multiply(amp_real, amp_imag); 
     totalAmp += matrixelement; 
   } 
+<<<<<<< Updated upstream
 
   fptype ret = norm2(totalAmp); 
+=======
+   
+  fptype ret = norm2(totalAmp); //
+>>>>>>> Stashed changes
   int effFunctionIdx = parIndexFromResIndex_DP(numResonances); 
-  fptype eff = callFunction(evt, indices[effFunctionIdx], indices[effFunctionIdx + 1]); 
+  fptype eff = callFunction(evt, indices[effFunctionIdx], indices[effFunctionIdx + 1]); //
   ret *= eff;
 
   //printf("DalitzPlot evt %i zero: %i %i %f (%f, %f).\n", evtNum, numResonances, effFunctionIdx, eff, totalAmp.real, totalAmp.imag); 
 
-  return ret; 
+  return ret; //
 }
 
 MEM_DEVICE device_function_ptr ptr_to_DalitzPlot = device_DalitzPlot; 
@@ -305,24 +315,24 @@ EXEC_TARGET devcomplex<fptype> SpecialResonanceIntegrator::operator () (thrust::
   // Notice that this is basically MetricTaker::operator (binned) with the special-case knowledge
   // that event size is two, and that the function to call is dev_DalitzPlot_calcIntegrals.
 
-  int globalBinNumber  = thrust::get<0>(t);
+  int globalBinNumber = thrust::get<0>(t);
   fptype lowerBoundM12 = thrust::get<1>(t)[0];
   fptype upperBoundM12 = thrust::get<1>(t)[1];  
-  int numBinsM12       = (int) FLOOR(thrust::get<1>(t)[2] + 0.5); 
-  int binNumberM12     = globalBinNumber % numBinsM12;
+  int numBinsM12      = (int) FLOOR(thrust::get<1>(t)[2] + 0.5); 
+  int binNumberM12    = globalBinNumber % numBinsM12;
   fptype binCenterM12  = upperBoundM12 - lowerBoundM12;
-  binCenterM12        /= numBinsM12;
-  binCenterM12        *= (binNumberM12 + 0.5); 
-  binCenterM12        += lowerBoundM12; 
+  binCenterM12       /= numBinsM12;
+  binCenterM12       *= (binNumberM12 + 0.5); 
+  binCenterM12       += lowerBoundM12; 
 
-  globalBinNumber     /= numBinsM12; 
+  globalBinNumber    /= numBinsM12; 
   fptype lowerBoundM13 = thrust::get<1>(t)[3];
   fptype upperBoundM13 = thrust::get<1>(t)[4];  
-  int numBinsM13       = (int) FLOOR(thrust::get<1>(t)[5] + 0.5); 
+  int numBinsM13      = (int) FLOOR(thrust::get<1>(t)[5] + 0.5); 
   fptype binCenterM13  = upperBoundM13 - lowerBoundM13;
-  binCenterM13        /= numBinsM13;
-  binCenterM13        *= (globalBinNumber + 0.5); 
-  binCenterM13        += lowerBoundM13; 
+  binCenterM13       /= numBinsM13;
+  binCenterM13       *= (globalBinNumber + 0.5); 
+  binCenterM13       += lowerBoundM13; 
 
   unsigned int* indices = paramIndices + parameters;   
   devcomplex<fptype> ret = device_DalitzPlot_calcIntegrals(binCenterM12, binCenterM13, resonance_i, resonance_j, cudaArray, indices); 
