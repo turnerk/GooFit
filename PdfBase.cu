@@ -1,4 +1,7 @@
 #include "PdfBase.hh"
+#include <mpi.h>
+#include <typeinfo>
+
 
 // This is code that belongs to the PdfBase class, that is, 
 // it is common across all implementations. But it calls on device-side
@@ -6,6 +9,14 @@
 // sit in its own object file; it must go in the CUDAglob.cu. So it's
 // off on its own in this inline-cuda file, which GooPdf.cu 
 // should include. 
+
+#define CHECK_MPI(error) \
+        if (error != MPI_SUCCESS) { \
+					int length; \
+					char message[MPI_MAX_ERROR_STRING]; \
+          MPI_Error_string(error, message, &length); \
+          printf("\n%.*s\n", length, message); \
+          MPI_Abort(MPI_COMM_WORLD, 1);}
 
 #ifdef CUDAPRINT
 __host__ void PdfBase::copyParams (const std::vector<double>& pars) const {
@@ -180,29 +191,46 @@ __host__ void PdfBase::setData (UnbinnedDataSet* data)
   numEvents = numEntries; 
 
 #ifdef TARGET_MPI
-  int myId, numProcs;
-  MPI_Comm_size (MPI_COMM_WORLD, &numProcs);
-  MPI_Comm_rank (MPI_COMM_WORLD, &myId);
 
-  int perTask = numEvents/numProcs;
+  int world_size, world_rank;
+	// Get the number of processes
+  MPI_Comm_size (MPI_COMM_WORLD, &world_size);
+	// Get the rank of the processes
+  MPI_Comm_rank (MPI_COMM_WORLD, &world_rank); 
 
-  int *counts = new int[numProcs];
-  int *displacements = new int[numProcs];
+  int num_events_per_proc = numEntries/world_size;
+
+  if (world_rank == 0) {
+    numEvents = data->getNumEvents();
+    dimensions = observables.size();
+  }
+
+  MPI_Bcast(&numEvents, sizeof(int), MPI_INT, 0, MPI_COMM_WORLD);
+  MPI_Bcast(&dimensions, sizeof(int), MPI_INT, 0, MPI_COMM_WORLD);
+
+  int *counts = new int[world_size];
+  int *displacements = new int[world_size];
 
   //indexing for copying events over!
-  for (int i = 0; i < numProcs - 1; i++)
-    counts[i] = perTask;
-  counts[numProcs - 1] = numEntries - perTask*(numProcs - 1);
-
+  for (int i = 0; i < world_size - 1; i++)
+    counts[i] = num_events_per_proc;
+  counts[world_size - 1] = numEntries - num_events_per_proc*(world_size - 1);
+  
   //displacements into the array for indexing!
   displacements[0] = 0;
-  for (int i = 1; i < numProcs; i++)
+  for (int i = 1; i < world_size; i++)
     displacements[i] = displacements[i - 1] + counts[i - 1];
+
 #endif
 
-  fptype* host_array = new fptype[numEntries*dimensions];
+  fptype* host_array;
 
 #ifdef TARGET_MPI
+
+  if (world_rank == 0) {
+    host_array = new fptype[numEntries*dimensions];
+  }
+
   //This is an array to track if we need to redo indexing
   int fixme[observables.size ()];
   memset(fixme, 0, sizeof (int)*observables.size ());
@@ -220,21 +248,65 @@ __host__ void PdfBase::setData (UnbinnedDataSet* data)
       //printf ("%i of %i - %s\n", i, observables.size (), c->name.c_str ());
     }
   }
-#endif
 
-  //populate this array with our stuff
-  for (int i = 0; i < numEntries; ++i)
+	if (world_rank == 0) {
+    //populate this array with our stuff
+    for (int i = 0; i < numEntries; ++i)
+    {
+      for (obsIter v = obsBegin(); v != obsEnd(); ++v)
+      {
+        fptype currVal = data->getValue((*v), i);
+        host_array[i*dimensions + (*v)->index] = currVal;
+      }
+    }
+
+    printf("\nHost array: ");
+    for (int i = 0; i < world_size; i++) {
+      for (int j = 0; j < 6; j++) {	
+    	  printf("%f ", host_array[displacements[i]+j]);
+  	  }
+    }
+  }
+	
+#else
+
+  host_array = new fptype[numEntries*dimensions];
+
+  for (int i = 0; i < numEntries; ++i) 
   {
     for (obsIter v = obsBegin(); v != obsEnd(); ++v)
     {
       fptype currVal = data->getValue((*v), i);
-      host_array[i*dimensions + (*v)->index] = currVal; 
+      host_array[i*dimensions + (*v)->index] = currVal;
     }
   }
 
+	printf("\nHost array: ");
+	for (int i = 0; i < 6; i++) {
+		printf("%f ", host_array[i]);
+	}
+
+#endif
+
 #ifdef TARGET_MPI
-  // we need to fix our observables indexing to reflect having multiple cards
-  for (int i = 1; i < numProcs; i++)
+
+  int mystart = displacements[world_rank];
+  int myend = mystart + counts[world_rank];
+  int mycount = myend - mystart;
+	
+	fptype *recv_buf = new fptype[mycount]; // The buffer to receive the scattered elements
+	
+  CHECK_MPI(MPI_Scatterv(host_array, counts, displacements, MPI_DOUBLE, recv_buf, mycount, MPI_DOUBLE, 0, MPI_COMM_WORLD));
+
+	// Print the numbers scattered to each processor
+  printf("\nProcessor rank %i out of %i processors: ", world_rank, world_size);
+
+  for (int i = 0; i < 6; i++) {
+    printf("%f ", recv_buf[i]);
+  }
+
+	// we need to fix our observables indexing to reflect having multiple cards
+  for (int i = 1; i < world_size; i++)
   {
     for (int j = 0; j < counts[i]; j++)
     {
@@ -243,21 +315,29 @@ __host__ void PdfBase::setData (UnbinnedDataSet* data)
       {
         //Its counting, fix the indexing here
         if (fixme[k] > 0)
-          host_array[(j + displacements[i])*dimensions + k] = float (j);
+          recv_buf[j * dimensions + k] = float (j);
       }
     }
   }
-  
-  int mystart = displacements[myId];
-  int myend = mystart + counts[myId];
-  int mycount = myend - mystart;
-#endif
 
-#ifdef TARGET_MPI
-  gooMalloc((void**) &dev_event_array, dimensions*mycount*sizeof(fptype));
-  MEMCPY(dev_event_array, host_array + mystart*dimensions, dimensions*mycount*sizeof(fptype), cudaMemcpyHostToDevice);
+#endif 
+
+#ifdef TARGET_MPI 
+	gooMalloc((void**) &dev_event_array, dimensions*mycount*sizeof(fptype));
+  MEMCPY(dev_event_array, recv_buf, dimensions*mycount*sizeof(fptype), cudaMemcpyHostToDevice);
   MEMCPY_TO_SYMBOL(functorConstants, &numEvents, sizeof(fptype), 0, cudaMemcpyHostToDevice);
-  delete[] host_array; 
+  if (world_rank == (world_size-1))  
+    delete[] host_array;
+  
+  delete[] recv_buf; 
+  printf("\ndev_event_array: ");
+
+  for (int i = 0; i < 6; i++) {
+    printf("%f ", dev_event_array[i]);
+  }
+
+  if (world_rank == (world_size - 1)) 
+    printf("\n\n");
 
   //update everybody
   setNumPerTask(this, mycount);
@@ -268,7 +348,7 @@ __host__ void PdfBase::setData (UnbinnedDataSet* data)
   gooMalloc((void**) &dev_event_array, dimensions*numEntries*sizeof(fptype)); 
   MEMCPY(dev_event_array, host_array, dimensions*numEntries*sizeof(fptype), cudaMemcpyHostToDevice);
   MEMCPY_TO_SYMBOL(functorConstants, &numEvents, sizeof(fptype), 0, cudaMemcpyHostToDevice); 
-  delete[] host_array; 
+  delete[] host_array;
 #endif
 }
 
@@ -290,9 +370,12 @@ __host__ void PdfBase::setData (BinnedDataSet* data)
   fptype* host_array = new fptype[numEntries*dimensions]; 
 
 #ifdef TARGET_MPI
-  int myId, numProcs;
-  MPI_Comm_size (MPI_COMM_WORLD, &numProcs);
-  MPI_Comm_rank (MPI_COMM_WORLD, &myId);
+
+	int world_size, world_rank;
+  // Get the number of processes
+  MPI_Comm_size (MPI_COMM_WORLD, &world_size);
+  // Get the rank of the processes
+  MPI_Comm_rank (MPI_COMM_WORLD, &world_rank);
 
   //This is an array to track if we need to redo indexing
   int fixme[dimensions];
@@ -306,36 +389,84 @@ __host__ void PdfBase::setData (BinnedDataSet* data)
     if (c)
       fixme[i] = 1;
   }
-#endif
 
-  for (unsigned int i = 0; i < numEntries; ++i) {
-    for (obsIter v = obsBegin(); v != obsEnd(); ++v) {
-      host_array[i*dimensions + (*v)->index] = data->getBinCenter((*v), i); 
+	if (world_rank == 0) { 
+    // populate the array
+    for (unsigned int i = 0; i < numEntries; ++i) {
+      for (obsIter v = obsBegin(); v != obsEnd(); ++v) {
+        host_array[i*dimensions + (*v)->index] = data->getBinCenter((*v), i);
+      }
+
+      host_array[i*dimensions + observables.size() + 0] = data->getBinContent(i);
+      host_array[i*dimensions + observables.size() + 1] = fitControl->binErrors() ? data->getBinError(i) : data->getBinVolume(i);
+      numEvents += data->getBinContent(i);
     }
 
-    host_array[i*dimensions + observables.size() + 0] = data->getBinContent(i);
-    host_array[i*dimensions + observables.size() + 1] = fitControl->binErrors() ? data->getBinError(i) : data->getBinVolume(i); 
-    numEvents += data->getBinContent(i);
+		printf("\nHost array: ");
+  	for (int i = 0; i < 25; i++) {
+    	printf("%f ", host_array[i]);
+  	}
   }
 
-#if TARGET_MPI
-  int perTask = numEvents/numProcs;
+#else
 
-  int *counts = new int[numProcs];
-  int *displacements = new int[numProcs];
+	// populate the array
+  for (unsigned int i = 0; i < numEntries; ++i) {
+  	  for (obsIter v = obsBegin(); v != obsEnd(); ++v) {
+    	  host_array[i*dimensions + (*v)->index] = data->getBinCenter((*v), i); 
+    	}
+		
+			host_array[i*dimensions + observables.size() + 0] = data->getBinContent(i);
+			host_array[i*dimensions + observables.size() + 1] = fitControl->binErrors() ? data->getBinError(i) : data->getBinVolume(i); 
+			numEvents += data->getBinContent(i);	
+	}
+
+	printf("\nHost array: ");
+  for (int i = 0; i < 25; i++) {
+    printf("%f ", host_array[i]);
+  }
+
+#endif
+
+#if TARGET_MPI
+
+  int num_events_per_proc = numEvents/world_size;
+
+  int *counts = new int[world_size];
+  int *displacements = new int[world_size];
 
   //indexing for copying events over!
-  for (int i = 0; i < numProcs - 1; i++)
-    counts[i] = perTask;
-  counts[numProcs - 1] = numEvents - perTask*(numProcs - 1);
+  for (int i = 0; i < world_size - 1; i++)
+    counts[i] = num_events_per_proc;
+  counts[world_size - 1] = numEvents - num_events_per_proc*(world_size - 1);
 
   //displacements into the array for indexing!
   displacements[0] = 0;
-  for (int i = 1; i < numProcs; i++)
+  for (int i = 1; i < world_size; i++)
     displacements[i] = displacements[i - 1] + counts[i - 1];
 
-  // we need to fix our observables indexing to reflect having multiple cards
-  for (int i = 1; i < numProcs; i++)
+  int mystart = displacements[world_rank];
+  int myend = mystart + counts[world_rank];
+  int mycount = myend - mystart;
+	
+	fptype *recv_buf = new fptype[mycount];
+
+	// check data type of fptype
+	if (typeid(fptype) == typeid(float)) {
+		printf("\nfloat");
+	  CHECK_MPI(MPI_Scatterv(host_array, counts, displacements, MPI_FLOAT, recv_buf, mycount, MPI_FLOAT, 0, MPI_COMM_WORLD));
+	} else {
+		// fptype is of type double
+		printf("\ndouble");
+		CHECK_MPI(MPI_Scatterv(host_array, counts, displacements, MPI_DOUBLE, recv_buf, mycount, MPI_DOUBLE, 0, MPI_COMM_WORLD));
+	}
+
+  // Print the numbers scattered to each processor
+  printf("\nProcessor rank %d"
+           " out of %d processors: ", world_rank, world_size);
+
+	// we need to fix our observables indexing to reflect having multiple cards
+  for (int i = 1; i < world_size; i++)
   {
     for (int j = 0; j < counts[i]; j++)
     {
@@ -344,24 +475,26 @@ __host__ void PdfBase::setData (BinnedDataSet* data)
       {
         //Its counting, fix the indexing here
         if (fixme[k] > 0)
-          host_array[(j + displacements[i])*dimensions + dimensions - k] = float (j);
+          recv_buf[(j + displacements[i])*dimensions + dimensions - k] = float (j);
       }
     }
   }
 
-  int mystart = displacements[myId];
-  int myend = mystart + counts[myId];
-  int mycount = myend - mystart;
+	for (int i = 0; i < 25; i++) {
+    printf("%f ", recv_buf[i]);
+  }
+
 #endif
 
 #ifdef TARGET_MPI
   gooMalloc((void**) &dev_event_array, dimensions*mycount*sizeof(fptype)); 
-  MEMCPY(dev_event_array, host_array + mystart*dimensions, dimensions*mycount*sizeof(fptype), cudaMemcpyHostToDevice);
+  MEMCPY(dev_event_array, recv_buf, dimensions*mycount*sizeof(fptype), cudaMemcpyHostToDevice); 
   MEMCPY_TO_SYMBOL(functorConstants, &numEvents, sizeof(fptype), 0, cudaMemcpyHostToDevice); 
-  delete[] host_array; 
+  delete[] host_array;
+	delete[] recv_buf;
 
   //update our displacements:
-  for (int i = 0; i < numProcs; i++)
+  for (int i = 0; i < world_size; i++)
     displacements[i] = 0;
 
   //update everybody
