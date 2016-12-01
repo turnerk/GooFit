@@ -78,8 +78,13 @@ TH1F* plotComponent (GooPdf* toPlot, double normFactor) {
 
 void getMCData () {
   data = new UnbinnedDataSet(dm); 
-  std::ifstream mcreader;
-  mcreader.open("dataFiles/dstwidth_kpi_resMC.dat"); 
+  ifstream mcreader;
+  mcreader.open("../../dataFiles/dstwidth_kpi_resMC.dat"); // open the stream
+  if (!mcreader.good()) {
+    cout << "Error reading from file." << endl;
+    exit(-1);
+  }
+
   TH1F* mchist = new TH1F("mchist", "", 300, 0.1365, 0.1665);
 
   double currDM = 0; 
@@ -100,12 +105,17 @@ void getMCData () {
   foo->SaveAs("zach_mchist.png"); 
 
   std::cout << "MC: Got " << data->getNumEvents() << " events.\n"; 
+  mcreader.close(); // close the stream
 }
 
 void getData () {
-  std::ifstream datareader;
-  datareader.open("dataFiles/zach/dstwidth_kpi_data.dat"); 
- 
+  ifstream datareader;
+  datareader.open("../../dataFiles/dstwidth_kpi_data.dat"); // open the stream
+  if (!datareader.good()) {
+    cout << "Error reading from file." << endl;
+    exit(-1);
+  }
+
   binnedData = new BinnedDataSet(dm); 
   delete data;
   data = new UnbinnedDataSet(dm); 
@@ -122,7 +132,7 @@ void getData () {
   }
 
   std::cout << "Data events: " << data->getNumEvents() << std::endl; 
-  datareader.close(); 
+  datareader.close(); // close the stream
 }
 
 void CudaMinimise (int dev, int fitType) {
@@ -392,7 +402,11 @@ void CudaMinimise (int dev, int fitType) {
   startCPU = times(&startProc);
   //ROOT::Minuit2::FunctionMinimum* min2 = datapdf.fit();
 
+<<<<<<< Updated upstream
   datapdf.fit();   
+=======
+  datapdf.fit();
+>>>>>>> Stashed changes
   datapdf.getMinuitValues();
   std::vector<Variable*> modParams;
   total.getParameters(modParams); 
@@ -431,8 +445,12 @@ void CudaMinimise (int dev, int fitType) {
     }
   }
 
+<<<<<<< Updated upstream
   std::cout << "\nTotal differences: " << count << endl;
  
+=======
+  std::cout << "\nTotal differences: " << count << endl; 
+>>>>>>> Stashed changes
   stopCPU = times(&stopProc);
   gettimeofday(&stopTime, NULL);
 
@@ -540,6 +558,7 @@ void CudaMinimise (int dev, int fitType) {
 timeval fullStart, fullStop, fullTime;
 
 int main (int argc, char** argv) {
+
   gettimeofday (&fullStart, NULL);
 #ifdef TARGET_MPI
   MPI_Init (&argc, &argv);
@@ -587,6 +606,9 @@ int main (int argc, char** argv) {
   std::cout << "Processor time: " << (myCPU / CLOCKS_PER_SEC) << std::endl;
 
   delete binnedData; 
+  delete data;
+  delete foo;
+  delete dm;
 
 #ifdef TARGET_MPI
   MPI_Finalize();
